@@ -35,8 +35,18 @@ cd fastpki
 # Create a .env file from the example
 cp .env.example .env
 
-# Start the containers
-docker-compose -f docker/docker-compose.yml up -d
+# Create data directory for SQLite database
+mkdir -p data
+
+# Development mode with SQLite (recommended for local development)
+docker-compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up -d
+```
+
+For production deployments with PostgreSQL:
+
+```bash
+# Production mode with PostgreSQL
+docker-compose -f docker/docker-compose.yml -f docker/docker-compose.prod.yml up -d
 ```
 
 The API will be available at http://localhost:8000
@@ -57,6 +67,9 @@ uv pip install -e ".[dev]"
 
 # Create a .env file from the example
 cp .env.example .env
+
+# Create data directory for SQLite database
+mkdir -p data
 
 # Run the application
 uvicorn app.main:app --reload
@@ -111,10 +124,29 @@ When the application is running, you can access the automatic API documentation 
 
 FastPKI supports both SQLite and PostgreSQL:
 
-- SQLite (default): Great for development or small deployments
-- PostgreSQL: Recommended for production environments
+- **SQLite** (default for development):
+  - Data is stored in the `data/fastpki.db` file for persistence
+  - Uses the aiosqlite driver for async support
+  - Connection string: `sqlite+aiosqlite:///./data/fastpki.db`
 
-To switch between databases, update the `DATABASE_URL` in your `.env` file.
+- **PostgreSQL** (recommended for production):
+  - Uses the asyncpg driver for async support
+  - Connection string: `postgresql+asyncpg://postgres:postgres@db:5432/fastpki`
+  - Configure using the `DATABASE_URL` environment variable
+
+## Project Structure
+
+```
+/app                # Main application code
+  /api              # API endpoints
+  /core             # Core configuration
+  /db               # Database models and session management
+  /schemas          # Pydantic schemas for API requests/responses
+  /services         # Business logic services
+/tests              # Test suite
+/docker             # Docker configuration
+/data               # SQLite database files and other persistent data
+```
 
 ## Testing
 

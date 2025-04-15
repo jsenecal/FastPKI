@@ -16,6 +16,7 @@ FastPKI is an API-based PKI management system that provides an easier alternativ
   - `/services`: Business logic services
 - `/tests`: Test suite
 - `/docker`: Docker configuration
+- `/data`: SQLite database files and other persistent data
 
 ## Development Workflow
 
@@ -53,6 +54,18 @@ make test
 make test-cov
 ```
 
+## Docker Workflow
+
+For development with Docker:
+
+```bash
+# Development mode with SQLite and code reloading
+docker-compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up -d
+
+# Production mode with PostgreSQL
+docker-compose -f docker/docker-compose.yml -f docker/docker-compose.prod.yml up -d
+```
+
 ## Type Checking Guidelines
 
 - All function definitions should have proper type annotations
@@ -73,8 +86,8 @@ make test-cov
 ## Database Configuration
 
 The application supports both SQLite and PostgreSQL:
-- Default: SQLite (`sqlite:///./fastpki.db`)
-- PostgreSQL: Configure via environment variable (`DATABASE_URL=postgresql://user:pass@host:port/db`)
+- Default: SQLite (`sqlite+aiosqlite:///./data/fastpki.db`)
+- PostgreSQL: Configure via environment variable (`DATABASE_URL=postgresql+asyncpg://user:pass@host:port/db`)
 
 ## Testing
 
