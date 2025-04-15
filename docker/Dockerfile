@@ -6,17 +6,14 @@ WORKDIR /app
 RUN pip install uv
 RUN apt-get update && apt-get install -y curl && apt-get clean
 
-# Copy requirements and install dependencies
-COPY pyproject.toml .
-RUN uv pip install --no-cache-dir -e ".[dev]"
+# First copy files needed for installation
+COPY pyproject.toml LICENSE README.md ./
 
-# Copy application code
+# Install dependencies (without dev dependencies for the main image)
+RUN uv pip install --system --no-cache-dir -e .
+
+# Now copy the rest of the application code
 COPY . .
-
-# Run linting and type checking at build time
-RUN ruff format --check app tests
-RUN ruff check app tests
-RUN mypy app
 
 # Create a non-root user and switch to it
 RUN adduser --disabled-password --gecos "" app

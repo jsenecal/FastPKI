@@ -1,0 +1,13 @@
+services:
+  api:
+    volumes:
+      - ../:/app
+      - ../data:/app/data
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./data/fastpki.db
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+    
+  # For development, we don't need the PostgreSQL service by default
+  db:
+    profiles:
+      - postgres
