@@ -1,4 +1,4 @@
-import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Optional, Tuple
 
 from cryptography import x509
@@ -76,12 +76,12 @@ class CAService:
         subject = CAService.parse_subject_dn(subject_dn)
         
         # Create CA certificate
-        now = datetime.datetime.utcnow()
+        now = datetime.now(UTC)
         cert_builder = x509.CertificateBuilder()
         cert_builder = cert_builder.subject_name(subject)
         cert_builder = cert_builder.issuer_name(subject)  # Self-signed
         cert_builder = cert_builder.not_valid_before(now)
-        cert_builder = cert_builder.not_valid_after(now + datetime.timedelta(days=valid_days))
+        cert_builder = cert_builder.not_valid_after(now + timedelta(days=valid_days))
         cert_builder = cert_builder.serial_number(x509.random_serial_number())
         cert_builder = cert_builder.public_key(private_key.public_key())
         

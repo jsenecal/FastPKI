@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import List, Optional
 
@@ -29,8 +29,8 @@ class CertificateAuthority(CertificateAuthorityBase, table=True):
     __tablename__ = "certificate_authorities"
     
     id: Optional[int] = Field(default=None, primary_key=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     
     private_key: str  # PEM encoded
     certificate: str  # PEM encoded
@@ -54,8 +54,8 @@ class Certificate(CertificateBase, table=True):
     __tablename__ = "certificates"
     
     id: Optional[int] = Field(default=None, primary_key=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     
     private_key: Optional[str] = None  # PEM encoded
     certificate: str  # PEM encoded
@@ -72,7 +72,7 @@ class CRLEntry(SQLModel, table=True):
     __tablename__ = "crl_entries"
     
     id: Optional[int] = Field(default=None, primary_key=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     
     serial_number: str = Field(index=True)
     revocation_date: datetime

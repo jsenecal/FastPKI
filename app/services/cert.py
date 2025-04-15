@@ -1,4 +1,4 @@
-import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Optional, Tuple, Union
 
 from cryptography import x509
@@ -66,9 +66,9 @@ class CertificateService:
         subject = CAService.parse_subject_dn(subject_dn)
         
         # Create certificate
-        now = datetime.datetime.utcnow()
+        now = datetime.now(UTC)
         not_before = now
-        not_after = now + datetime.timedelta(days=valid_days)
+        not_after = now + timedelta(days=valid_days)
         
         cert_builder = x509.CertificateBuilder()
         cert_builder = cert_builder.subject_name(subject)
@@ -191,7 +191,7 @@ class CertificateService:
         
         # Update certificate status
         cert.status = CertificateStatus.REVOKED
-        cert.revoked_at = datetime.datetime.utcnow()
+        cert.revoked_at = datetime.now(UTC)
         
         # Add CRL entry
         crl_entry = CRLEntry(
