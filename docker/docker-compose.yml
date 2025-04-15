@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../:/app
+    environment:
+      - DATABASE_URL=sqlite:///./fastpki.db
+      # - DATABASE_URL=postgresql://postgres:postgres@db:5432/fastpki
+    depends_on:
+      - db
+    restart: unless-stopped
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=fastpki
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # Add a service for running linting and type checking
+  lint:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: >
+      bash -c "
+        ruff check app tests &&
+        mypy app
+      "
+    volumes:
+      - ../:/app
+    profiles:
+      - lint
+
+volumes:
+  postgres_data:
