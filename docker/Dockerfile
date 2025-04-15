@@ -14,6 +14,7 @@ RUN uv pip install --no-cache-dir -e ".[dev]"
 COPY . .
 
 # Run linting and type checking at build time
+RUN ruff format --check app tests
 RUN ruff check app tests
 RUN mypy app
 

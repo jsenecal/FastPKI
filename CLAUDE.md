@@ -25,8 +25,7 @@ Always run these commands before confirming code changes:
 
 ```bash
 # Format code
-isort app tests
-black app tests
+ruff format app tests
 
 # Check code quality and types
 ruff check app tests
@@ -68,6 +67,8 @@ make test-cov
 - Cryptography for PKI operations
 - Pydantic for data validation
 - UV for package management
+- Ruff for linting and formatting
+- Mypy for type checking
 
 ## Database Configuration
 

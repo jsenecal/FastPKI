@@ -6,12 +6,11 @@ install:
 
 # Format code
 format:
-	isort app tests
-	black app tests
+	ruff format app tests
 
 # Run linting
 lint:
-	ruff app tests
+	ruff check app tests
 	mypy app
 
 # Run tests

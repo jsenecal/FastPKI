@@ -11,7 +11,7 @@ FastPKI is an API-based PKI management system that provides an easier alternativ
 - Compatible with SQLite and PostgreSQL
 - Docker support for easy deployment
 - Type checking with mypy
-- Code quality with ruff linter
+- Code quality with ruff linter and formatter
 
 ## Requirements
 
@@ -66,12 +66,10 @@ uvicorn app.main:app --reload
 
 ### Code Quality
 
-We use several tools to ensure code quality:
+We use the following tools to ensure code quality:
 
-- **ruff**: Fast Python linter
+- **ruff**: Fast Python linter and formatter
 - **mypy**: Static type checker
-- **black**: Code formatter
-- **isort**: Import sorter
 
 Run linting and type checking:
 
@@ -91,8 +89,7 @@ Format code:
 make format
 
 # Or directly
-isort app tests
-black app tests
+ruff format app tests
 ```
 
 ### Pre-commit Hooks

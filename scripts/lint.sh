@@ -4,15 +4,11 @@ set -e
 # Create directory if it doesn't exist
 mkdir -p scripts
 
-# Run formatting
-echo "Running isort..."
-isort app tests
+# Run formatting and linting
+echo "Running ruff format..."
+ruff format app tests
 
-echo "Running black..."
-black app tests
-
-# Run linting
-echo "Running ruff..."
+echo "Running ruff check..."
 ruff check app tests
 
 echo "Running mypy..."
