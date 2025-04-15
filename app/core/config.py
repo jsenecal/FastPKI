@@ -16,12 +16,14 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "FastPKI"
     
     # Database settings
-    DATABASE_URL: Optional[str] = "sqlite:///./fastpki.db"
+    DATABASE_URL: Optional[str] = "sqlite+aiosqlite:///./fastpki.db"
     DATABASE_CONNECT_ARGS: Dict[str, Any] = {}
     
     @field_validator("DATABASE_URL")
     def validate_database_url(cls, v: Optional[str]) -> Any:
         if v and v.startswith("sqlite"):
+            if not v.startswith("sqlite+aiosqlite"):
+                return v.replace("sqlite", "sqlite+aiosqlite")
             return v
         if v and v.startswith("postgresql"):
             return v.replace("postgresql", "postgresql+asyncpg")
