@@ -102,6 +102,14 @@ The application supports both SQLite and PostgreSQL:
 - Tests are in the `/tests` directory
 - Tests need to be run within the virtual environment or otherwise will fail due to missing dependencies 
 
+## Git Commits
+
+- Write concise, meaningful commit messages
+- Use the imperative mood ("Add feature" not "Added feature")
+- Follow the conventional commits format (fix:, feat:, docs:, etc.)
+- NEVER mention Claude, AI, LLMs, or include any AI-related signatures in commit messages
+- Do not include any "Co-Authored-By" statements
+
 ### Test Workflow
 
 ```bash
