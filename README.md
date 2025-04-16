@@ -120,6 +120,34 @@ When the application is running, you can access the automatic API documentation 
 - Swagger UI: http://localhost:8000/api/v1/docs
 - ReDoc: http://localhost:8000/api/v1/redoc
 
+## Authentication and User Management
+
+### First User Creation
+
+FastPKI implements a first-user privilege system for initial setup:
+
+1. The first user created in the system can be assigned any role, including `superuser`. This is a bootstrap mechanism that allows for the initial setup of the system.
+
+2. After the first user is created, only existing superusers can create other users with elevated privileges (`admin` or `superuser` roles).
+
+3. Regular users can only create other regular users.
+
+To create the first superuser:
+
+```bash
+# Make a POST request to create the first user with superuser role
+curl -X POST http://localhost:8000/api/v1/users/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "email": "admin@example.com",
+    "password": "securepassword",
+    "role": "superuser"
+  }'
+```
+
+This first superuser can then authenticate and manage other users through the API.
+
 ## Database Support
 
 FastPKI supports both SQLite and PostgreSQL:
