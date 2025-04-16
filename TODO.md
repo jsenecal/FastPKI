@@ -22,14 +22,15 @@ Our goal is to create a comprehensive authentication and authorization system wi
 
 ### 2. Organization and Role System
 
-- [ ] Implement Organization model
-  - [ ] Write tests for organization creation
-  - [ ] Write tests for user-organization relationships
-  - [ ] Write tests for role-based permissions
-  - [ ] Implement OrganizationService
-  - [ ] Update User model with organization relationship
-  - [ ] Add role enumeration (SUPERUSER, ADMIN, USER)
-  - [ ] Create organization management endpoints
+- [x] Implement Organization model
+  - [x] Write tests for organization creation
+  - [x] Write tests for user-organization relationships
+  - [x] Write tests for role-based permissions
+  - [x] Implement OrganizationService
+  - [x] Update User model with organization relationship
+  - [x] Add role enumeration (SUPERUSER, ADMIN, USER)
+  - [x] Create organization management endpoints
+  - [ ] Fix organization API tests (3 tests failing with 404 errors)
 
 ### 3. Permission System
 

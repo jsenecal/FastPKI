@@ -26,6 +26,18 @@ class CertificateType(str, Enum):
     CLIENT = "client"
 
 
+class Organization(SQLModel, table=True):
+    __tablename__ = "organizations"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(index=True, unique=True)
+    description: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    users: list["User"] = Relationship(back_populates="organization")
+
+
 class CertificateAuthorityBase(SQLModel):
     name: str = Field(index=True)
     description: Optional[str] = None
@@ -104,6 +116,5 @@ class User(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
-    organization_id: Optional[int] = (
-        None  # Will be FK to organizations once implemented
-    )
+    organization_id: Optional[int] = Field(default=None, foreign_key="organizations.id")
+    organization: Optional[Organization] = Relationship(back_populates="users")
