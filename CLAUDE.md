@@ -91,6 +91,27 @@ The application supports both SQLite and PostgreSQL:
 
 ## Testing
 
+- We follow Test-Driven Development (TDD) practices
+- Always create a failing test first, then implement the feature to make it pass
+- Follow the Red-Green-Refactor cycle:
+  1. Red: Write a failing test for the new functionality
+  2. Green: Implement the minimal code needed to make the test pass
+  3. Refactor: Clean up the code while ensuring tests still pass
 - Use pytest for all tests
 - Test coverage should be maintained above 80%
 - Tests are in the `/tests` directory
+- Tests need to be run within the virtual environment or otherwise will fail due to missing dependencies 
+
+### Test Workflow
+
+```bash
+# Create a new failing test
+# Example: Create a test for a new feature
+pytest tests/test_new_feature.py -v
+
+# Implement the feature to make the test pass
+pytest tests/test_new_feature.py -v
+
+# Refactor as needed while keeping tests passing
+pytest -v
+```
