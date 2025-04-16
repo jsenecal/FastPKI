@@ -1,8 +1,8 @@
 import asyncio
+import logging
 import os
-from typing import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator
 
-import pytest
 import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
@@ -12,8 +12,11 @@ from sqlalchemy.pool import NullPool
 from sqlmodel import SQLModel
 
 from app.api import api_router
-from app.core.config import settings
+from app.core.config import logger, settings
 from app.db.session import get_session
+
+# Set logger to DEBUG for tests
+logger.setLevel(logging.DEBUG)
 
 
 # Test database
@@ -52,17 +55,25 @@ async def event_loop():
     loop.close()
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function")
 async def setup_db():
     # Create the test database and tables
+    # Log the setup
+    logger.debug("Setting up test database")
+
+    # Remove existing test database file first
+    if os.path.exists("./test.db"):
+        os.remove("./test.db")
+
     async with test_engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.drop_all)
         await conn.run_sync(SQLModel.metadata.create_all)
     yield
     # Clean up after tests
+    logger.debug("Tearing down test database")
     async with test_engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.drop_all)
-    
+
     # Remove test database file
     if os.path.exists("./test.db"):
         os.remove("./test.db")
@@ -80,10 +91,10 @@ async def db(setup_db) -> AsyncGenerator[AsyncSession, None]:
 @pytest_asyncio.fixture
 async def client(setup_db) -> AsyncGenerator[AsyncClient, None]:
     app = create_test_app()
-    
+
     # Override the dependency
     app.dependency_overrides[get_session] = get_test_session
-    
+
     # Create test client using ASGITransport
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:

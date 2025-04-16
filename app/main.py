@@ -5,7 +5,6 @@ from app.api import api_router
 from app.core.config import settings
 from app.db.session import create_db_and_tables
 
-
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
@@ -25,10 +24,10 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 
 @app.on_event("startup")
-async def on_startup():
+async def on_startup() -> None:
     await create_db_and_tables()
 
 
 @app.get("/")
-async def root():
+async def root() -> dict[str, str]:
     return {"message": "Welcome to FastPKI - API-based PKI management system."}

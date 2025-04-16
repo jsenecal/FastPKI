@@ -13,17 +13,17 @@ async def test_create_ca(client: AsyncClient):
         "description": "Test Certificate Authority",
         "subject_dn": "CN=Test CA,O=Test Organization,C=US",
         "key_size": 2048,
-        "valid_days": 3650
+        "valid_days": 3650,
     }
-    
+
     response = await client.post(
         f"{settings.API_V1_STR}/cas/",
         json=ca_data,
     )
-    
+
     assert response.status_code == status.HTTP_201_CREATED
     created_ca = response.json()
-    
+
     assert created_ca["name"] == ca_data["name"]
     assert created_ca["description"] == ca_data["description"]
     assert created_ca["subject_dn"] == ca_data["subject_dn"]
@@ -41,19 +41,19 @@ async def test_get_cas(client: AsyncClient):
         "name": "Another CA",
         "subject_dn": "CN=Another CA,O=Test Organization,C=US",
     }
-    
+
     response = await client.post(
         f"{settings.API_V1_STR}/cas/",
         json=ca_data,
     )
     assert response.status_code == status.HTTP_201_CREATED
-    
+
     # Now test getting the list of CAs
     response = await client.get(f"{settings.API_V1_STR}/cas/")
-    
+
     assert response.status_code == status.HTTP_200_OK
     cas = response.json()
-    
+
     assert len(cas) >= 1
     assert cas[0]["name"] is not None
     assert cas[0]["subject_dn"] is not None
@@ -68,7 +68,7 @@ async def test_get_ca(client: AsyncClient):
         "name": "CA to Get",
         "subject_dn": "CN=CA to Get,O=Test Organization,C=US",
     }
-    
+
     response = await client.post(
         f"{settings.API_V1_STR}/cas/",
         json=ca_data,
@@ -76,13 +76,13 @@ async def test_get_ca(client: AsyncClient):
     assert response.status_code == status.HTTP_201_CREATED
     created_ca = response.json()
     ca_id = created_ca["id"]
-    
+
     # Now test getting a specific CA
     response = await client.get(f"{settings.API_V1_STR}/cas/{ca_id}")
-    
+
     assert response.status_code == status.HTTP_200_OK
     retrieved_ca = response.json()
-    
+
     assert retrieved_ca["id"] == ca_id
     assert retrieved_ca["name"] == ca_data["name"]
     assert retrieved_ca["subject_dn"] == ca_data["subject_dn"]
@@ -97,7 +97,7 @@ async def test_get_ca_private_key(client: AsyncClient):
         "name": "CA with Private Key",
         "subject_dn": "CN=CA with Private Key,O=Test Organization,C=US",
     }
-    
+
     response = await client.post(
         f"{settings.API_V1_STR}/cas/",
         json=ca_data,
@@ -105,13 +105,13 @@ async def test_get_ca_private_key(client: AsyncClient):
     assert response.status_code == status.HTTP_201_CREATED
     created_ca = response.json()
     ca_id = created_ca["id"]
-    
+
     # Now test getting a specific CA with private key
     response = await client.get(f"{settings.API_V1_STR}/cas/{ca_id}/private-key")
-    
+
     assert response.status_code == status.HTTP_200_OK
     retrieved_ca = response.json()
-    
+
     assert retrieved_ca["id"] == ca_id
     assert retrieved_ca["name"] == ca_data["name"]
     assert retrieved_ca["subject_dn"] == ca_data["subject_dn"]
@@ -126,7 +126,7 @@ async def test_delete_ca(client: AsyncClient):
         "name": "CA to Delete",
         "subject_dn": "CN=CA to Delete,O=Test Organization,C=US",
     }
-    
+
     response = await client.post(
         f"{settings.API_V1_STR}/cas/",
         json=ca_data,
@@ -134,12 +134,12 @@ async def test_delete_ca(client: AsyncClient):
     assert response.status_code == status.HTTP_201_CREATED
     created_ca = response.json()
     ca_id = created_ca["id"]
-    
+
     # Now test deleting the CA
     response = await client.delete(f"{settings.API_V1_STR}/cas/{ca_id}")
-    
+
     assert response.status_code == status.HTTP_204_NO_CONTENT
-    
+
     # Verify it's deleted
     response = await client.get(f"{settings.API_V1_STR}/cas/{ca_id}")
     assert response.status_code == status.HTTP_404_NOT_FOUND

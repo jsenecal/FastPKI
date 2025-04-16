@@ -1,10 +1,7 @@
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
-from app.db.models import CertificateAuthority
 from app.schemas.ca import CACreate, CADetailResponse, CAResponse
 from app.services.ca import CAService
 
@@ -13,8 +10,8 @@ router = APIRouter()
 
 @router.post("/", response_model=CADetailResponse, status_code=status.HTTP_201_CREATED)
 async def create_ca(
-    ca_in: CACreate, 
-    db: AsyncSession = Depends(get_db)
+    ca_in: CACreate,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> CADetailResponse:
     """Create a new Certificate Authority."""
     try:
@@ -26,28 +23,24 @@ async def create_ca(
             key_size=ca_in.key_size,
             valid_days=ca_in.valid_days,
         )
-        return ca
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to create CA: {str(e)}",
-        )
+            detail=f"Failed to create CA: {e!s}",
+        ) from e
+    else:
+        return ca
 
 
-@router.get("/", response_model=List[CAResponse])
-async def read_cas(
-    db: AsyncSession = Depends(get_db)
-) -> List[CAResponse]:
+@router.get("/", response_model=list[CAResponse])
+async def read_cas(db: AsyncSession = Depends(get_db)) -> list[CAResponse]:  # noqa: B008
     """Get all Certificate Authorities."""
     cas = await CAService.list_cas(db)
     return cas
 
 
 @router.get("/{ca_id}", response_model=CAResponse)
-async def read_ca(
-    ca_id: int, 
-    db: AsyncSession = Depends(get_db)
-) -> CAResponse:
+async def read_ca(ca_id: int, db: AsyncSession = Depends(get_db)) -> CAResponse:  # noqa: B008
     """Get a specific Certificate Authority by ID."""
     ca = await CAService.get_ca(db, ca_id)
     if not ca:
@@ -60,8 +53,8 @@ async def read_ca(
 
 @router.get("/{ca_id}/private-key", response_model=CADetailResponse)
 async def read_ca_with_private_key(
-    ca_id: int, 
-    db: AsyncSession = Depends(get_db)
+    ca_id: int,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> CADetailResponse:
     """Get a specific Certificate Authority by ID, including private key."""
     ca = await CAService.get_ca(db, ca_id)
@@ -74,10 +67,7 @@ async def read_ca_with_private_key(
 
 
 @router.delete("/{ca_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_ca(
-    ca_id: int, 
-    db: AsyncSession = Depends(get_db)
-) -> None:
+async def delete_ca(ca_id: int, db: AsyncSession = Depends(get_db)) -> None:  # noqa: B008
     """Delete a Certificate Authority by ID."""
     success = await CAService.delete_ca(db, ca_id)
     if not success:

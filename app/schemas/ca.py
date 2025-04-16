@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class CACreate(BaseModel):
@@ -22,7 +22,7 @@ class CAResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     certificate: str
-    
+
 
 class CADetailResponse(CAResponse):
     private_key: str

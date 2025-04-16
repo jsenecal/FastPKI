@@ -11,14 +11,14 @@ Our goal is to create a comprehensive authentication and authorization system wi
 - [x] Setup project structure (FastAPI, SQLModel, tests)
 - [x] Implement basic PKI functionality (CA, Certificates)
 - [x] Add export functionality with TDD approach
-- [ ] Implement User model and authentication
-  - [ ] Write tests for user creation and retrieval
-  - [ ] Write tests for password hashing and verification
-  - [ ] Write tests for JWT token generation and validation
-  - [ ] Implement UserService with CRUD operations
-  - [ ] Implement AuthService for authentication
-  - [ ] Create login endpoint for token generation
-  - [ ] Add protected route dependencies
+- [x] Implement User model and authentication
+  - [x] Write tests for user creation and retrieval
+  - [x] Write tests for password hashing and verification
+  - [x] Write tests for JWT token generation and validation
+  - [x] Implement UserService with CRUD operations
+  - [x] Implement AuthService for authentication
+  - [x] Create login endpoint for token generation
+  - [x] Add protected route dependencies
 
 ### 2. Organization and Role System
 
