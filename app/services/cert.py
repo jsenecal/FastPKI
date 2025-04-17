@@ -62,7 +62,10 @@ class CertificateService:
             private_key_obj, private_key_pem = CAService.generate_key_pair(key_size)
         else:
             # If no private key is needed, just generate a temporary one for the CSR
+            # But don't store it in the certificate
             private_key_obj, _ = CAService.generate_key_pair(key_size)
+            # Explicitly set private_key_pem to None
+            private_key_pem = None
 
         # Parse subject DN
         subject = CAService.parse_subject_dn(subject_dn)
