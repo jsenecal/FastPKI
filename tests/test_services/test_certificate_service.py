@@ -2,7 +2,11 @@ import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import CertificateAuthority, Certificate, CertificateType, CertificateStatus
+from app.db.models import (
+    CertificateAuthority,
+    CertificateStatus,
+    CertificateType,
+)
 from app.services.ca import CAService
 from app.services.cert import CertificateService
 
@@ -33,7 +37,7 @@ async def test_create_certificate(db: AsyncSession, test_ca: CertificateAuthorit
         key_size=2048,
         valid_days=365,
     )
-    
+
     # Check that the certificate was created with expected values
     assert cert.id is not None
     assert cert.common_name == "test.example.com"
@@ -51,7 +55,9 @@ async def test_create_certificate(db: AsyncSession, test_ca: CertificateAuthorit
 
 
 @pytest.mark.asyncio
-async def test_create_certificate_without_private_key(db: AsyncSession, test_ca: CertificateAuthority):
+async def test_create_certificate_without_private_key(
+    db: AsyncSession, test_ca: CertificateAuthority
+):
     """Test creating a new certificate without including the private key."""
     cert = await CertificateService.create_certificate(
         db=db,
@@ -61,7 +67,7 @@ async def test_create_certificate_without_private_key(db: AsyncSession, test_ca:
         certificate_type=CertificateType.SERVER,
         include_private_key=False,
     )
-    
+
     # Check that the certificate was created without a private key
     assert cert.id is not None
     assert cert.common_name == "no-key.example.com"
@@ -80,10 +86,10 @@ async def test_get_certificate(db: AsyncSession, test_ca: CertificateAuthority):
         subject_dn="CN=get.example.com,O=Test Organization,C=US",
         certificate_type=CertificateType.SERVER,
     )
-    
+
     # Now retrieve it
     cert = await CertificateService.get_certificate(db, created_cert.id)
-    
+
     # Check that we got the right certificate
     assert cert is not None
     assert cert.id == created_cert.id
@@ -102,16 +108,16 @@ async def test_list_certificates(db: AsyncSession, test_ca: CertificateAuthority
             subject_dn=f"CN=list{i}.example.com,O=Test Organization,C=US",
             certificate_type=CertificateType.SERVER,
         )
-    
+
     # List all certificates
     certs = await CertificateService.list_certificates(db)
-    
+
     # Check that we got at least 3 certificates (might be more if other tests ran)
     assert len(certs) >= 3
-    
+
     # List certificates filtered by CA
     certs = await CertificateService.list_certificates(db, ca_id=test_ca.id)
-    
+
     # Check that all certificates have the right CA
     assert all(cert.issuer_id == test_ca.id for cert in certs)
 
@@ -127,12 +133,12 @@ async def test_revoke_certificate(db: AsyncSession, test_ca: CertificateAuthorit
         subject_dn="CN=revoke.example.com,O=Test Organization,C=US",
         certificate_type=CertificateType.SERVER,
     )
-    
+
     # Revoke the certificate
     revoked_cert = await CertificateService.revoke_certificate(
         db, cert.id, reason="Key compromise"
     )
-    
+
     # Check that the certificate was revoked
     assert revoked_cert is not None
     assert revoked_cert.id == cert.id
@@ -151,9 +157,9 @@ async def test_different_cert_types(db: AsyncSession, test_ca: CertificateAuthor
         subject_dn="CN=client.example.com,O=Test Organization,C=US",
         certificate_type=CertificateType.CLIENT,
     )
-    
+
     assert client_cert.certificate_type == CertificateType.CLIENT
-    
+
     # Create a CA certificate
     ca_cert = await CertificateService.create_certificate(
         db=db,
@@ -162,5 +168,5 @@ async def test_different_cert_types(db: AsyncSession, test_ca: CertificateAuthor
         subject_dn="CN=subca.example.com,O=Test Organization,C=US",
         certificate_type=CertificateType.CA,
     )
-    
+
     assert ca_cert.certificate_type == CertificateType.CA

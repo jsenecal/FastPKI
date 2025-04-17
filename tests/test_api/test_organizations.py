@@ -19,6 +19,7 @@ from app.api.deps import (
     get_current_active_superuser,
     get_current_active_user,
     get_current_user,
+    get_db,
 )
 from app.core.config import settings
 from app.db.models import User, UserRole
@@ -417,90 +418,358 @@ async def test_delete_organization(superuser_client):
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(
-    reason="Database connection issues prevent test from running correctly"
-)
-async def test_add_user_to_organization(superuser_client, test_normal_user, test_db):
-    # Generate a unique organization name
+async def test_add_user_to_organization(setup_test_db):
+    """Test adding a user to an organization."""
     import time
+    from fastapi import FastAPI
+    from app.services.user import UserService
 
-    org_name = f"User Org {time.time()}"
+    # Create a test app with consistent database session
+    app = FastAPI()
+    app.include_router(api_router, prefix=settings.API_V1_STR)
 
-    # First create an organization
-    org_response = await superuser_client.post(
-        "/api/v1/organizations/",
-        json={"name": org_name, "description": "Organization for user assignment"},
-    )
+    # Create a session for this test
+    async with test_session_maker() as session:
+        # Create a superuser in the test database
+        user_service = UserService(session)
+        superuser = await user_service.create_user(
+            username=f"test_super_{time.time()}",
+            email=f"test_super_{time.time()}@example.com",
+            password="password123",
+            role=UserRole.SUPERUSER,
+        )
 
-    assert org_response.status_code == status.HTTP_201_CREATED
-    org_id = org_response.json()["id"]
+        # Create a normal user in the same session
+        normal_user = await user_service.create_user(
+            username=f"test_normal_{time.time()}",
+            email=f"test_normal_{time.time()}@example.com",
+            password="password123",
+            role=UserRole.USER,
+        )
 
-    # Add user to organization - this would work in a proper integration test
-    # but due to database connection issues we skip this for now
-    assert True
+        # Use the session in our app
+        async def override_get_db():
+            try:
+                yield session
+            finally:
+                pass  # Don't close the session here as it's managed by the test
+
+        # Override auth dependencies
+        async def override_get_current_user():
+            return superuser
+
+        async def override_get_current_active_user():
+            return superuser
+
+        async def override_get_current_active_superuser():
+            return superuser
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_user] = override_get_current_user
+        app.dependency_overrides[get_current_active_user] = (
+            override_get_current_active_user
+        )
+        app.dependency_overrides[get_current_active_superuser] = (
+            override_get_current_active_superuser
+        )
+        app.dependency_overrides[get_current_active_admin_user] = (
+            override_get_current_active_superuser
+        )
+
+        # Create test client
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            # Create an organization
+            org_name = f"User Org {time.time()}"
+            org_response = await client.post(
+                "/api/v1/organizations/",
+                json={
+                    "name": org_name,
+                    "description": "Organization for user assignment",
+                },
+            )
+
+            assert org_response.status_code == status.HTTP_201_CREATED
+            org_id = org_response.json()["id"]
+
+            # Add the user to the organization
+            add_response = await client.post(
+                f"/api/v1/organizations/{org_id}/users/{normal_user.id}"
+            )
+
+            # Check response
+            assert add_response.status_code == status.HTTP_200_OK
+            data = add_response.json()
+            assert data["id"] == normal_user.id
+            assert data["organization_id"] == org_id
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(
-    reason="Database connection issues prevent test from running correctly"
-)
-async def test_remove_user_from_organization(
-    superuser_client, test_normal_user, test_db
-):
-    # Generate a unique organization name
+async def test_remove_user_from_organization(setup_test_db):
+    """Test removing a user from an organization."""
     import time
+    from fastapi import FastAPI
+    from app.services.user import UserService
 
-    org_name = f"User Remove Org {time.time()}"
+    # Create a test app with consistent database session
+    app = FastAPI()
+    app.include_router(api_router, prefix=settings.API_V1_STR)
 
-    # First create an organization
-    org_response = await superuser_client.post(
-        "/api/v1/organizations/",
-        json={"name": org_name, "description": "Organization for user removal"},
-    )
+    # Create a session for this test
+    async with test_session_maker() as session:
+        # Create a superuser in the test database
+        user_service = UserService(session)
+        superuser = await user_service.create_user(
+            username=f"test_super_remove_{time.time()}",
+            email=f"test_super_remove_{time.time()}@example.com",
+            password="password123",
+            role=UserRole.SUPERUSER,
+        )
 
-    assert org_response.status_code == status.HTTP_201_CREATED
-    # Skip the rest of the test due to database connection issues
-    assert True
+        # Create a normal user in the same session
+        normal_user = await user_service.create_user(
+            username=f"test_normal_remove_{time.time()}",
+            email=f"test_normal_remove_{time.time()}@example.com",
+            password="password123",
+            role=UserRole.USER,
+        )
+
+        # Use the session in our app
+        async def override_get_db():
+            try:
+                yield session
+            finally:
+                pass
+
+        # Override auth dependencies
+        async def override_get_current_user():
+            return superuser
+
+        async def override_get_current_active_user():
+            return superuser
+
+        async def override_get_current_active_superuser():
+            return superuser
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_user] = override_get_current_user
+        app.dependency_overrides[get_current_active_user] = (
+            override_get_current_active_user
+        )
+        app.dependency_overrides[get_current_active_superuser] = (
+            override_get_current_active_superuser
+        )
+        app.dependency_overrides[get_current_active_admin_user] = (
+            override_get_current_active_superuser
+        )
+
+        # Create test client
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            # Create an organization
+            org_name = f"User Remove Org {time.time()}"
+            org_response = await client.post(
+                "/api/v1/organizations/",
+                json={"name": org_name, "description": "Organization for user removal"},
+            )
+
+            assert org_response.status_code == status.HTTP_201_CREATED
+            org_id = org_response.json()["id"]
+
+            # Add the user to the organization
+            add_response = await client.post(
+                f"/api/v1/organizations/{org_id}/users/{normal_user.id}"
+            )
+            assert add_response.status_code == status.HTTP_200_OK
+
+            # Now remove the user from the organization
+            remove_response = await client.delete(
+                f"/api/v1/organizations/{org_id}/users/{normal_user.id}"
+            )
+
+            # Check response
+            assert remove_response.status_code == status.HTTP_200_OK
+            data = remove_response.json()
+            assert data["id"] == normal_user.id
+            assert data["organization_id"] is None
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(
-    reason="Database connection issues prevent test from running correctly"
-)
-async def test_get_organization_users(superuser_client, test_db):
-    # Generate a unique organization name
+async def test_get_organization_users(setup_test_db):
+    """Test getting all users in an organization."""
     import time
+    from fastapi import FastAPI
+    from app.services.user import UserService
 
-    timestamp = time.time()
-    org_name = f"Multi User Org {timestamp}"
+    # Create a test app with consistent database session
+    app = FastAPI()
+    app.include_router(api_router, prefix=settings.API_V1_STR)
 
-    # First create an organization
-    org_response = await superuser_client.post(
-        "/api/v1/organizations/",
-        json={"name": org_name, "description": "Organization with multiple users"},
-    )
+    # Create a session for this test
+    async with test_session_maker() as session:
+        # Create a superuser in the test database
+        user_service = UserService(session)
+        superuser = await user_service.create_user(
+            username=f"test_super_list_{time.time()}",
+            email=f"test_super_list_{time.time()}@example.com",
+            password="password123",
+            role=UserRole.SUPERUSER,
+        )
 
-    assert org_response.status_code == status.HTTP_201_CREATED
-    # Skip the rest of the test due to database connection issues
-    assert True
+        # Create a normal user in the same session
+        normal_user = await user_service.create_user(
+            username=f"test_normal_list_{time.time()}",
+            email=f"test_normal_list_{time.time()}@example.com",
+            password="password123",
+            role=UserRole.USER,
+        )
+
+        # Use the session in our app
+        async def override_get_db():
+            try:
+                yield session
+            finally:
+                pass
+
+        # Override auth dependencies
+        async def override_get_current_user():
+            return superuser
+
+        async def override_get_current_active_user():
+            return superuser
+
+        async def override_get_current_active_superuser():
+            return superuser
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_user] = override_get_current_user
+        app.dependency_overrides[get_current_active_user] = (
+            override_get_current_active_user
+        )
+        app.dependency_overrides[get_current_active_superuser] = (
+            override_get_current_active_superuser
+        )
+        app.dependency_overrides[get_current_active_admin_user] = (
+            override_get_current_active_superuser
+        )
+
+        # Create test client
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            # Create an organization
+            timestamp = time.time()
+            org_name = f"Multi User Org {timestamp}"
+            org_response = await client.post(
+                "/api/v1/organizations/",
+                json={
+                    "name": org_name,
+                    "description": "Organization with multiple users",
+                },
+            )
+
+            assert org_response.status_code == status.HTTP_201_CREATED
+            org_id = org_response.json()["id"]
+
+            # Add a user to the organization
+            add_response = await client.post(
+                f"/api/v1/organizations/{org_id}/users/{normal_user.id}"
+            )
+            assert add_response.status_code == status.HTTP_200_OK
+
+            # Now get all users in the organization
+            users_response = await client.get(f"/api/v1/organizations/{org_id}/users")
+
+            # Check response
+            assert users_response.status_code == status.HTTP_200_OK
+            users_data = users_response.json()
+            assert isinstance(users_data, list)
+            assert len(users_data) >= 1
+
+            # Check if our test user is in the list
+            user_ids = [user["id"] for user in users_data]
+            assert normal_user.id in user_ids
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(
-    reason="Database connection issues prevent test from running correctly"
-)
-async def test_user_access_own_organization(admin_client, test_admin_user, test_db):
-    # Generate a unique organization name
+async def test_user_access_own_organization(setup_test_db):
+    """Test a user accessing their own organization."""
     import time
+    from fastapi import FastAPI
+    from app.services.user import UserService
+    from app.services.organization import OrganizationService
 
-    org_name = f"Admin Org {time.time()}"
+    # Create a test app with consistent database session
+    app = FastAPI()
+    app.include_router(api_router, prefix=settings.API_V1_STR)
 
-    # Create organization for the admin user
-    org_response = await admin_client.post(
-        "/api/v1/organizations/",
-        json={"name": org_name, "description": "Organization for admin access test"},
-    )
+    # Create a session for this test
+    async with test_session_maker() as session:
+        # Create a superuser in the test database to set everything up
+        user_service = UserService(session)
+        superuser = await user_service.create_user(
+            username=f"test_super_access_{time.time()}",
+            email=f"test_super_access_{time.time()}@example.com",
+            password="password123",
+            role=UserRole.SUPERUSER,
+        )
 
-    assert org_response.status_code == status.HTTP_201_CREATED
-    # Skip the rest of the test due to database connection issues
-    assert True
+        # Create an admin user in the same session
+        admin_user = await user_service.create_user(
+            username=f"test_admin_access_{time.time()}",
+            email=f"test_admin_access_{time.time()}@example.com",
+            password="password123",
+            role=UserRole.ADMIN,
+        )
+
+        # Create the organization and add the admin to it directly
+        # (bypassing API permission checks)
+        org_service = OrganizationService(session)
+        org_name = f"Admin Org {time.time()}"
+        org = await org_service.create_organization(
+            name=org_name, description="Organization for admin access test"
+        )
+
+        # Directly assign the user to the organization via the service
+        await org_service.add_user_to_organization(
+            user_id=admin_user.id,
+            org_id=org.id,
+            admin_user_id=superuser.id,  # Use the superuser to bypass permission checks
+        )
+
+        # Use the session in our app
+        async def override_get_db():
+            try:
+                yield session
+            finally:
+                pass
+
+        # Override auth dependencies to use our admin user
+        async def override_get_current_user():
+            return admin_user
+
+        async def override_get_current_active_user():
+            return admin_user
+
+        async def override_get_current_active_admin_user():
+            return admin_user
+
+        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_current_user] = override_get_current_user
+        app.dependency_overrides[get_current_active_user] = (
+            override_get_current_active_user
+        )
+        app.dependency_overrides[get_current_active_admin_user] = (
+            override_get_current_active_admin_user
+        )
+
+        # Create test client
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            # Admin should be able to access their own organization
+            access_response = await client.get(f"/api/v1/organizations/{org.id}")
+
+            # Check response
+            assert access_response.status_code == status.HTTP_200_OK
+            org_data = access_response.json()
+            assert org_data["id"] == org.id
+            assert org_data["name"] == org_name

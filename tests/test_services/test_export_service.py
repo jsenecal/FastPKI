@@ -163,7 +163,6 @@ async def test_export_certificate_without_private_key():
     # Add route with mocked dependency
     @app.get("/api/v1/export/certificate/{cert_id}/private-key")
     async def test_endpoint(cert_id: int):
-
         from app.services.cert import CertificateService
 
         # Monkey patch the CertificateService.get_certificate method

@@ -25,7 +25,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def get_current_user(
     db: AsyncSession = Depends(get_db),  # noqa: B008
-    token: str = Depends(oauth2_scheme),  # noqa: B008
+    token: str = Depends(oauth2_scheme),
 ) -> User:
     """
     Validate access token and return current user.
@@ -42,12 +42,12 @@ async def get_current_user(
         token_data = TokenPayload(**payload)
     except (JWTError, ValidationError):
         raise credentials_exception
-    
+
     from app.services.user import UserService
-    
+
     user_service = UserService(db)
     user = await user_service.get_user_by_id(token_data.id)
-    
+
     if user is None:
         raise credentials_exception
     return user

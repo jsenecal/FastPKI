@@ -6,8 +6,7 @@ from datetime import timedelta
 from typing import Optional
 
 import pytest_asyncio
-from fastapi import Depends, FastAPI
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -181,7 +180,11 @@ async def normal_user_token(normal_user, db) -> str:
     """Create and return a token for the normal user."""
     user_service = UserService(db)
     token = user_service.create_access_token(
-        data={"sub": normal_user.username, "id": normal_user.id, "role": normal_user.role},
+        data={
+            "sub": normal_user.username,
+            "id": normal_user.id,
+            "role": normal_user.role,
+        },
         expires_delta=timedelta(minutes=30),
     )
     return token
@@ -221,12 +224,12 @@ def auth_override_app():
 
     def _auth_override_app(user: Optional[User] = None):
         app = create_test_app()
-        
+
         # Override the dependency
         app.dependency_overrides[get_session] = get_test_session
         app.dependency_overrides[get_current_user] = TestAuth(user)
         app.dependency_overrides[get_current_active_user] = TestAuth(user)
-        
+
         return app
 
     return _auth_override_app

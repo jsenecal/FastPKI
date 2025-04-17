@@ -1,5 +1,4 @@
 import pytest
-import pytest_asyncio
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,12 +6,10 @@ from app.api.deps import (
     get_current_active_admin_user,
     get_current_active_superuser,
     get_current_active_user,
-    get_current_user,
     get_db,
 )
-from app.db.models import User, UserRole
+from app.db.models import UserRole
 from app.services.user import UserService
-
 
 # Remove unused fixtures
 
@@ -41,7 +38,7 @@ async def test_get_current_active_user_success(db: AsyncSession):
         password="password123",
         role=UserRole.USER,
     )
-    
+
     active_user = await get_current_active_user(current_user=user)
     assert active_user is not None
     assert active_user.id == user.id
@@ -59,16 +56,16 @@ async def test_get_current_active_user_inactive(db: AsyncSession):
         password="password123",
         role=UserRole.USER,
     )
-    
+
     # Set inactive status directly
     user.is_active = False
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    
+
     with pytest.raises(HTTPException) as exc_info:
         await get_current_active_user(current_user=user)
-    
+
     assert exc_info.value.status_code == 400
     assert "Inactive user" in exc_info.value.detail
 
@@ -84,7 +81,7 @@ async def test_get_current_active_superuser_success(db: AsyncSession):
         password="password123",
         role=UserRole.SUPERUSER,
     )
-    
+
     superuser = await get_current_active_superuser(current_user=user)
     assert superuser is not None
     assert superuser.id == user.id
@@ -102,10 +99,10 @@ async def test_get_current_active_superuser_not_superuser(db: AsyncSession):
         password="password123",
         role=UserRole.USER,
     )
-    
+
     with pytest.raises(HTTPException) as exc_info:
         await get_current_active_superuser(current_user=user)
-    
+
     assert exc_info.value.status_code == 403
     assert "sufficient privileges" in exc_info.value.detail
 
@@ -121,7 +118,7 @@ async def test_get_current_active_admin_user_admin(db: AsyncSession):
         password="password123",
         role=UserRole.ADMIN,
     )
-    
+
     admin_user = await get_current_active_admin_user(current_user=user)
     assert admin_user is not None
     assert admin_user.id == user.id
@@ -139,7 +136,7 @@ async def test_get_current_active_admin_user_superuser(db: AsyncSession):
         password="password123",
         role=UserRole.SUPERUSER,
     )
-    
+
     super_admin_user = await get_current_active_admin_user(current_user=user)
     assert super_admin_user is not None
     assert super_admin_user.id == user.id
@@ -157,9 +154,9 @@ async def test_get_current_active_admin_user_not_admin(db: AsyncSession):
         password="password123",
         role=UserRole.USER,
     )
-    
+
     with pytest.raises(HTTPException) as exc_info:
         await get_current_active_admin_user(current_user=user)
-    
+
     assert exc_info.value.status_code == 403
     assert "sufficient privileges" in exc_info.value.detail
