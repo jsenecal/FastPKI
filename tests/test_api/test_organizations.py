@@ -425,10 +425,12 @@ async def test_add_user_to_organization(superuser_client, test_normal_user):
     assert org_response.status_code == status.HTTP_201_CREATED
     org_id = org_response.json()["id"]
     
-    # Add user to organization
+    # Add user to organization using path parameters
     uri = f"/api/v1/organizations/{org_id}/users/{test_normal_user.id}"
     
     response = await superuser_client.post(uri)
+    
+    print(f"Response: {response.status_code} - {response.text}")
     
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -457,8 +459,9 @@ async def test_remove_user_from_organization(superuser_client, test_normal_user)
     
     # Remove user from organization
     remove_uri = f"/api/v1/organizations/{org_id}/users/{test_normal_user.id}"
-    
     response = await superuser_client.delete(remove_uri)
+    
+    print(f"Remove response: {response.status_code} - {response.text}")
     
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -499,14 +502,15 @@ async def test_get_organization_users(superuser_client):
         user_ids.append(test_user.id)
         
         # Add user to organization
-        await superuser_client.post(
-            f"/api/v1/organizations/{org_id}/users/{user_ids[i]}"
-        )
+        add_uri = f"/api/v1/organizations/{org_id}/users/{user_ids[i]}"
+        await superuser_client.post(add_uri)
     
     # Get all users for the organization
     response = await superuser_client.get(
         f"/api/v1/organizations/{org_id}/users"
     )
+    
+    print(f"Get users response: {response.status_code} - {response.text}")
     
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
@@ -534,14 +538,17 @@ async def test_user_access_own_organization(admin_client, test_admin_user):
     org_id = org_response.json()["id"]
     
     # Add the admin user to their organization
-    await admin_client.post(
-        f"/api/v1/organizations/{org_id}/users/{test_admin_user.id}"
-    )
+    add_uri = f"/api/v1/organizations/{org_id}/users/{test_admin_user.id}"
+    add_response = await admin_client.post(add_uri)
+    
+    print(f"Add admin response: {add_response.status_code} - {add_response.text}")
     
     # Admin should be able to access their own organization
     response = await admin_client.get(
         f"/api/v1/organizations/{org_id}"
     )
+    
+    print(f"Get org response: {response.status_code} - {response.text}")
     
     assert response.status_code == status.HTTP_200_OK
     data = response.json()

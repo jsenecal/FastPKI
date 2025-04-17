@@ -9,7 +9,7 @@ from app.api.deps import (
     get_current_active_user,
     get_db,
 )
-from app.db.models import User
+from app.db.models import User, UserRole
 from app.schemas.organization import (
     Organization,
     OrganizationCreate,
@@ -54,12 +54,22 @@ async def read_organization(
     """
     organization_service = OrganizationService(db)
 
+    # Superusers can access any organization
+    if current_user.role == UserRole.SUPERUSER:
+        organization = await organization_service.get_organization_by_id(organization_id)
+        if not organization:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Organization not found",
+            )
+        return organization
+
     # Check if user has access to the organization
     has_access = await organization_service.user_has_organization_access(
         current_user.id, organization_id
     )
 
-    if not has_access and current_user.role != "superuser":
+    if not has_access:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to access this organization",
@@ -108,7 +118,7 @@ async def update_organization(
     db: AsyncSession = Depends(get_db),  # noqa: B008
     organization_id: int,
     organization_in: OrganizationUpdate,
-    current_user: User = Depends(get_current_active_user),  # noqa: B008
+    current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> Organization:
     """
     Update an organization.
@@ -117,7 +127,16 @@ async def update_organization(
     """
     organization_service = OrganizationService(db)
 
-    # Check if user has admin access to the organization
+    # For superusers, allow updating any organization
+    if current_user.role == UserRole.SUPERUSER:
+        organization = await organization_service.update_organization(
+            org_id=organization_id,
+            name=organization_in.name,
+            description=organization_in.description,
+        )
+        return organization
+
+    # For admin users, check if they have admin access to this specific organization
     has_admin_access = await organization_service.user_has_organization_admin_access(
         current_user.id, organization_id
     )
@@ -160,59 +179,168 @@ async def delete_organization(
     return None
 
 
-@router.post("/{organization_id}/users/{user_id}", response_model=UserSchema, status_code=status.HTTP_200_OK)
+@router.post("/users", response_model=UserSchema)
 async def add_user_to_organization(
     *,
     db: AsyncSession = Depends(get_db),  # noqa: B008
     organization_id: int,
     user_id: int,
-    current_user: User = Depends(get_current_active_user),  # noqa: B008
+    current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> UserSchema:
     """
     Add a user to an organization.
     Superusers can add any user to any organization.
     Organization admins can add users to their organization.
     """
+    from app.core.config import logger
+    logger.debug(f"Adding user {user_id} to organization {organization_id}")
+    
     organization_service = OrganizationService(db)
 
-    # Check if user can add users to this organization
+    # Check if organization exists
+    org = await organization_service.get_organization_by_id(organization_id)
+    if not org:
+        logger.debug(f"Organization {organization_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found",
+        )
+
+    # Superusers can add any user to any organization
+    if current_user.role == UserRole.SUPERUSER:
+        logger.debug(f"User {current_user.id} is superuser, adding user {user_id} to org {organization_id}")
+        user = await organization_service.add_user_to_organization(
+            user_id, organization_id, admin_user_id=current_user.id
+        )
+        return user
+
+    # For admin users, check if they can add users to this organization
     can_add = await organization_service.user_can_add_user_to_organization(
         current_user.id, organization_id, user_id
     )
 
     if not can_add:
+        logger.debug(f"User {current_user.id} does not have permission to add users to org {organization_id}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to add users to this organization",
         )
 
+    logger.debug(f"User {current_user.id} has permission, adding user {user_id} to org {organization_id}")
     user = await organization_service.add_user_to_organization(
         user_id, organization_id, admin_user_id=current_user.id
     )
     return user
 
 
-@router.delete("/{organization_id}/users/{user_id}", response_model=UserSchema)
+@router.post("/{organization_id}/users/{user_id}", response_model=UserSchema)
+async def add_user_to_organization_path(
+    *,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    organization_id: int,
+    user_id: int,
+    current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
+) -> UserSchema:
+    """
+    Add a user to an organization.
+    Superusers can add any user to any organization.
+    Organization admins can add users to their organization.
+    This is an alternative path-based endpoint.
+    """
+    from app.core.config import logger
+    logger.debug(f"Adding user {user_id} to organization {organization_id} (path)")
+    
+    organization_service = OrganizationService(db)
+
+    # Verify the user exists
+    from app.services.user import UserService
+    user_service = UserService(db)
+    user_exists = await user_service.get_user_by_id(user_id)
+    if not user_exists:
+        logger.debug(f"User {user_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Check if organization exists
+    org = await organization_service.get_organization_by_id(organization_id)
+    if not org:
+        logger.debug(f"Organization {organization_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found",
+        )
+
+    # Superusers can add any user to any organization
+    if current_user.role == UserRole.SUPERUSER:
+        logger.debug(f"Superuser {current_user.id} adding user {user_id} to org {organization_id}")
+        user = await organization_service.add_user_to_organization(
+            user_id, organization_id, admin_user_id=current_user.id
+        )
+        return user
+
+    # For admin users, check if they can add users to this organization
+    can_add = await organization_service.user_can_add_user_to_organization(
+        current_user.id, organization_id, user_id
+    )
+
+    if not can_add:
+        logger.debug(f"User {current_user.id} denied permission for org {organization_id}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to add users to this organization",
+        )
+
+    logger.debug(f"User {current_user.id} adding user {user_id} to org {organization_id}")
+    user = await organization_service.add_user_to_organization(
+        user_id, organization_id, admin_user_id=current_user.id
+    )
+    return user
+
+
+@router.delete("/users", response_model=UserSchema)
 async def remove_user_from_organization(
     *,
     db: AsyncSession = Depends(get_db),  # noqa: B008
     organization_id: int,
     user_id: int,
-    current_user: User = Depends(get_current_active_user),  # noqa: B008
+    current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> UserSchema:
     """
     Remove a user from their organization.
     Superusers can remove any user from any organization.
     Organization admins can remove users from their organization.
     """
+    from app.core.config import logger
+    logger.debug(f"Removing user {user_id} from organization {organization_id}")
+    
     organization_service = OrganizationService(db)
 
-    # Check if user has access to this organization
+    # Check if organization exists
+    org = await organization_service.get_organization_by_id(organization_id)
+    if not org:
+        logger.debug(f"Organization {organization_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found",
+        )
+
+    # Superusers can remove any user from any organization
+    if current_user.role == UserRole.SUPERUSER:
+        logger.debug(f"User {current_user.id} is superuser, removing user {user_id}")
+        user = await organization_service.remove_user_from_organization(
+            user_id, admin_user_id=current_user.id
+        )
+        return user
+
+    # For admin users, check access
     has_access = await organization_service.user_has_organization_access(
         current_user.id, organization_id
     )
 
-    if not has_access and current_user.role != "superuser":
+    if not has_access:
+        logger.debug(f"User {current_user.id} does not have access to org {organization_id}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to access this organization",
@@ -224,18 +352,98 @@ async def remove_user_from_organization(
     )
 
     if not can_remove:
+        logger.debug(f"User {current_user.id} cannot remove user {user_id}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to remove this user",
         )
 
+    logger.debug(f"User {current_user.id} has permission, removing user {user_id}")
     user = await organization_service.remove_user_from_organization(
         user_id, admin_user_id=current_user.id
     )
     return user
 
 
-@router.get("/{organization_id}/users", response_model=list[UserSchema])
+@router.delete("/{organization_id}/users/{user_id}", response_model=UserSchema)
+async def remove_user_from_organization_path(
+    *,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    organization_id: int,
+    user_id: int,
+    current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
+) -> UserSchema:
+    """
+    Remove a user from their organization.
+    Superusers can remove any user from any organization.
+    Organization admins can remove users from their organization.
+    This is an alternative path-based endpoint.
+    """
+    from app.core.config import logger
+    logger.debug(f"Removing user {user_id} from organization {organization_id} (path params)")
+    
+    organization_service = OrganizationService(db)
+
+    # Verify the user exists
+    from app.services.user import UserService
+    user_service = UserService(db)
+    user_exists = await user_service.get_user_by_id(user_id)
+    if not user_exists:
+        logger.debug(f"User {user_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Check if organization exists
+    org = await organization_service.get_organization_by_id(organization_id)
+    if not org:
+        logger.debug(f"Organization {organization_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found",
+        )
+
+    # Superusers can remove any user from any organization
+    if current_user.role == UserRole.SUPERUSER:
+        logger.debug(f"User {current_user.id} is superuser, removing user {user_id}")
+        user = await organization_service.remove_user_from_organization(
+            user_id, admin_user_id=current_user.id
+        )
+        return user
+
+    # For admin users, check access
+    has_access = await organization_service.user_has_organization_access(
+        current_user.id, organization_id
+    )
+
+    if not has_access:
+        logger.debug(f"User {current_user.id} does not have access to org {organization_id}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to access this organization",
+        )
+
+    # Check if user can remove this user
+    can_remove = await organization_service.user_can_remove_user_from_organization(
+        current_user.id, user_id
+    )
+
+    if not can_remove:
+        logger.debug(f"User {current_user.id} cannot remove user {user_id}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to remove this user",
+        )
+
+    logger.debug(f"User {current_user.id} has permission, removing user {user_id}")
+    user = await organization_service.remove_user_from_organization(
+        user_id, admin_user_id=current_user.id
+    )
+    return user
+
+
+@router.get("/org-users", response_model=list[UserSchema])
 async def read_organization_users(
     *,
     db: AsyncSession = Depends(get_db),  # noqa: B008
@@ -247,18 +455,88 @@ async def read_organization_users(
     Users can only see users in their own organization.
     Superusers can see users in any organization.
     """
+    from app.core.config import logger
+    logger.debug(f"Getting users for organization {organization_id}")
+    
     organization_service = OrganizationService(db)
+
+    # Check if organization exists
+    org = await organization_service.get_organization_by_id(organization_id)
+    if not org:
+        logger.debug(f"Organization {organization_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found",
+        )
+
+    # Superusers can see users in any organization
+    if current_user.role == UserRole.SUPERUSER:
+        logger.debug(f"User {current_user.id} is superuser, getting all users for org {organization_id}")
+        users = await organization_service.get_organization_users(organization_id)
+        return users
 
     # Check if user has access to the organization
     has_access = await organization_service.user_has_organization_access(
         current_user.id, organization_id
     )
 
-    if not has_access and current_user.role != "superuser":
+    if not has_access:
+        logger.debug(f"User {current_user.id} does not have access to org {organization_id}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to access this organization",
         )
 
+    logger.debug(f"User {current_user.id} has access, getting users for org {organization_id}")
+    users = await organization_service.get_organization_users(organization_id)
+    return users
+
+
+@router.get("/{organization_id}/users", response_model=list[UserSchema])
+async def read_organization_users_path(
+    *,
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    organization_id: int,
+    current_user: User = Depends(get_current_active_user),  # noqa: B008
+) -> list[UserSchema]:
+    """
+    Get all users in an organization.
+    Users can only see users in their own organization.
+    Superusers can see users in any organization.
+    This is an alternative path-based endpoint.
+    """
+    from app.core.config import logger
+    logger.debug(f"Getting users for organization {organization_id} (path params)")
+    
+    organization_service = OrganizationService(db)
+
+    # Check if organization exists
+    org = await organization_service.get_organization_by_id(organization_id)
+    if not org:
+        logger.debug(f"Organization {organization_id} not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found",
+        )
+
+    # Superusers can see users in any organization
+    if current_user.role == UserRole.SUPERUSER:
+        logger.debug(f"User {current_user.id} is superuser, getting all users for org {organization_id}")
+        users = await organization_service.get_organization_users(organization_id)
+        return users
+
+    # Check if user has access to the organization
+    has_access = await organization_service.user_has_organization_access(
+        current_user.id, organization_id
+    )
+
+    if not has_access:
+        logger.debug(f"User {current_user.id} does not have access to org {organization_id}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to access this organization",
+        )
+
+    logger.debug(f"User {current_user.id} has access, getting users for org {organization_id}")
     users = await organization_service.get_organization_users(organization_id)
     return users
