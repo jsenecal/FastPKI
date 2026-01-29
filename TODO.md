@@ -2,6 +2,8 @@
 
 This document outlines the planned features and implementation steps for FastPKI, following a Test-Driven Development approach.
 
+**Current status**: 114 tests passing, 73% coverage.
+
 ## Authentication and Authorization System
 
 Our goal is to create a comprehensive authentication and authorization system with role-based access control, per-resource permissions, and organization-level access management.
@@ -30,10 +32,10 @@ Our goal is to create a comprehensive authentication and authorization system wi
   - [x] Update User model with organization relationship
   - [x] Add role enumeration (SUPERUSER, ADMIN, USER)
   - [x] Create organization management endpoints
-  - [ ] Fix organization API tests (3 tests failing with 404 errors)
-- [ ] Consolidate duplicate `get_current_user` implementations (one in `app/api/auth.py`, another in `app/api/deps.py` with different behavior)
+  - [x] Fix organization API tests
+- [ ] Consolidate duplicate `get_current_user` implementations (`app/api/auth.py` still has its own copy alongside `app/api/deps.py`)
 - [ ] Consolidate duplicate `oauth2_scheme` definitions (pointing to different URLs in `auth.py` vs `deps.py`)
-- [ ] Use a single dependency injection pattern for database sessions (`get_session` vs `get_db` used inconsistently across endpoints)
+- [ ] Use a single dependency injection pattern for database sessions (`get_session` vs `get_db` — `users.py` switched to `get_db`, but `auth.py` still uses `get_session`)
 
 ### 3. Permission System
 
@@ -48,10 +50,11 @@ Our goal is to create a comprehensive authentication and authorization system wi
 
 ### 4. Secure API Endpoints
 
-- [ ] Add authentication to CA endpoints (currently completely unauthenticated)
-- [ ] Add authentication to Certificate endpoints (currently completely unauthenticated)
-- [ ] Add authentication to Export endpoints (private keys downloadable without auth)
-- [ ] Update existing endpoints with permission checks
+- [x] Add authentication to CA endpoints
+- [x] Add authentication to Certificate endpoints
+- [x] Add authentication to Export endpoints
+- [x] Add 401 unauthenticated access tests for CA, Certificate, and Export endpoints
+- [ ] Update existing endpoints with per-resource permission checks
   - [ ] Write tests for CA endpoints with permission checks
   - [ ] Write tests for Certificate endpoints with permission checks
   - [ ] Write tests for Export endpoints with permission checks
@@ -71,18 +74,20 @@ Our goal is to create a comprehensive authentication and authorization system wi
 
 ## Security Hardening
 
-- [ ] Remove hardcoded default `SECRET_KEY` (`"supersecretkey"` in `config.py`); require it to be set via environment or fail at startup
-- [ ] Replace `python-jose` with `PyJWT` or `joserfc` (python-jose is unmaintained and has known CVEs)
+- [x] Remove hardcoded default `SECRET_KEY` (validator rejects keys < 32 chars, warns on default value)
+- [x] Replace `python-jose` with `PyJWT` (python-jose is unmaintained and has known CVEs)
+- [x] Replace `passlib` with direct `bcrypt` usage (passlib incompatible with bcrypt 5.x)
+- [x] Prevent double-revocation of certificates (returns 409 Conflict)
+- [x] Replace f-string logging with `%s`-style formatting
 - [ ] Encrypt private keys at rest in the database (CA and certificate keys are stored as plaintext PEM)
-- [ ] Prevent double-revocation of certificates (`revoke_certificate` doesn't check current status, creating duplicate CRL entries)
-- [ ] Replace f-string logging with `%s`-style formatting to avoid unnecessary evaluation and potential data leakage
 
 ## Bug Fixes
 
-- [ ] Fix `CRLEntry.ca_id` type mismatch: field is non-nullable (`int`) but is assigned from `cert.issuer_id` which is `Optional[int]`
-- [ ] Add `model_config = {"from_attributes": True}` to `CAResponse` and `CertificateResponse` schemas (required for ORM instance conversion)
-- [ ] Fix `list_cas` and `list_certificates` return type: `.scalars().all()` returns `Sequence`, not `list`
-- [ ] Handle escaped commas in `parse_subject_dn` (e.g., `O=Foo\, Inc.` will break the parser)
+- [x] Fix `CRLEntry.ca_id` type mismatch: guard against `cert.issuer_id is None` before creating CRLEntry
+- [x] Add `model_config = {"from_attributes": True}` to `CAResponse` and `CertificateResponse` schemas
+- [x] Fix `list_cas` and `list_certificates` return type: wrap with `list()`
+- [x] Handle escaped commas in `parse_subject_dn` (uses `re.split(r"(?<!\\),", ...)`)
+- [x] Fix JWT `exp` claim type: cast `timestamp()` float to `int` for Pydantic v2 compatibility
 
 ## Code Quality / Refactoring
 
@@ -94,20 +99,20 @@ Our goal is to create a comprehensive authentication and authorization system wi
 
 ## Tech Debt
 
-- [ ] Replace deprecated `@app.on_event("startup")` with FastAPI `lifespan` context manager
-- [ ] Remove deprecated `default_backend()` calls from cryptography operations (no-op since cryptography 3.x)
-- [ ] Replace deprecated `sessionmaker` usage with `async_sessionmaker`
+- [x] Replace deprecated `@app.on_event("startup")` with FastAPI `lifespan` context manager
+- [x] Remove deprecated `default_backend()` calls from cryptography operations
+- [x] Replace deprecated `sessionmaker` usage with `async_sessionmaker`
 - [ ] Set up Alembic migration configuration (alembic is a dependency but unused; `create_all` won't handle schema changes)
 
 ## Implementation Notes
 
 ### Authentication Implementation Details
 
-The authentication system will use:
-- Bcrypt for password hashing
-- JWT tokens for authentication
+The authentication system uses:
+- Bcrypt for password hashing (direct `bcrypt` library)
+- PyJWT for JWT token encoding/decoding
 - Role-based access control for coarse-grained permissions
-- Per-resource permissions for fine-grained access control
+- Per-resource permissions for fine-grained access control (planned)
 
 ### Model Structure
 
@@ -132,7 +137,7 @@ class Organization(SQLModel, table=True):
     # Relationships with users and resources
 ```
 
-**Permission Model**:
+**Permission Model** (planned):
 ```python
 class Permission(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -168,7 +173,8 @@ Each component of the auth system will be tested at multiple levels:
 
 ## Next Steps
 
-1. Begin with user authentication tests
-2. Implement user model and authentication service
-3. Move to organization and permission tests
-4. Gradually apply security to all endpoints
+1. Consolidate remaining duplicate auth dependencies
+2. Design and implement the Permission model
+3. Add per-resource permission checks to endpoints
+4. Implement audit logging
+5. Encrypt private keys at rest
