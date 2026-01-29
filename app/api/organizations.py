@@ -196,14 +196,14 @@ async def add_user_to_organization(
     """
     from app.core.config import logger
 
-    logger.debug(f"Adding user {user_id} to organization {organization_id}")
+    logger.debug("Adding user %s to organization %s", user_id, organization_id)
 
     organization_service = OrganizationService(db)
 
     # Check if organization exists
     org = await organization_service.get_organization_by_id(organization_id)
     if not org:
-        logger.debug(f"Organization {organization_id} not found")
+        logger.debug("Organization %s not found", organization_id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Organization not found",
@@ -212,7 +212,10 @@ async def add_user_to_organization(
     # Superusers can add any user to any organization
     if current_user.role == UserRole.SUPERUSER:
         logger.debug(
-            f"User {current_user.id} is superuser, adding user {user_id} to org {organization_id}"
+            "User %s is superuser, adding user %s to org %s",
+            current_user.id,
+            user_id,
+            organization_id,
         )
         user = await organization_service.add_user_to_organization(
             user_id, organization_id, admin_user_id=current_user.id
@@ -226,7 +229,9 @@ async def add_user_to_organization(
 
     if not can_add:
         logger.debug(
-            f"User {current_user.id} does not have permission to add users to org {organization_id}"
+            "User %s does not have permission to add users to org %s",
+            current_user.id,
+            organization_id,
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -234,7 +239,10 @@ async def add_user_to_organization(
         )
 
     logger.debug(
-        f"User {current_user.id} has permission, adding user {user_id} to org {organization_id}"
+        "User %s has permission, adding user %s to org %s",
+        current_user.id,
+        user_id,
+        organization_id,
     )
     user = await organization_service.add_user_to_organization(
         user_id, organization_id, admin_user_id=current_user.id
@@ -258,7 +266,7 @@ async def add_user_to_organization_path(
     """
     from app.core.config import logger
 
-    logger.debug(f"Adding user {user_id} to organization {organization_id} (path)")
+    logger.debug("Adding user %s to organization %s (path)", user_id, organization_id)
 
     organization_service = OrganizationService(db)
 
@@ -268,7 +276,7 @@ async def add_user_to_organization_path(
     user_service = UserService(db)
     user_exists = await user_service.get_user_by_id(user_id)
     if not user_exists:
-        logger.debug(f"User {user_id} not found")
+        logger.debug("User %s not found", user_id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
@@ -277,7 +285,7 @@ async def add_user_to_organization_path(
     # Check if organization exists
     org = await organization_service.get_organization_by_id(organization_id)
     if not org:
-        logger.debug(f"Organization {organization_id} not found")
+        logger.debug("Organization %s not found", organization_id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Organization not found",
@@ -286,7 +294,10 @@ async def add_user_to_organization_path(
     # Superusers can add any user to any organization
     if current_user.role == UserRole.SUPERUSER:
         logger.debug(
-            f"Superuser {current_user.id} adding user {user_id} to org {organization_id}"
+            "Superuser %s adding user %s to org %s",
+            current_user.id,
+            user_id,
+            organization_id,
         )
         user = await organization_service.add_user_to_organization(
             user_id, organization_id, admin_user_id=current_user.id
@@ -300,7 +311,7 @@ async def add_user_to_organization_path(
 
     if not can_add:
         logger.debug(
-            f"User {current_user.id} denied permission for org {organization_id}"
+            "User %s denied permission for org %s", current_user.id, organization_id
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -308,7 +319,7 @@ async def add_user_to_organization_path(
         )
 
     logger.debug(
-        f"User {current_user.id} adding user {user_id} to org {organization_id}"
+        "User %s adding user %s to org %s", current_user.id, user_id, organization_id
     )
     user = await organization_service.add_user_to_organization(
         user_id, organization_id, admin_user_id=current_user.id
@@ -331,14 +342,14 @@ async def remove_user_from_organization(
     """
     from app.core.config import logger
 
-    logger.debug(f"Removing user {user_id} from organization {organization_id}")
+    logger.debug("Removing user %s from organization %s", user_id, organization_id)
 
     organization_service = OrganizationService(db)
 
     # Check if organization exists
     org = await organization_service.get_organization_by_id(organization_id)
     if not org:
-        logger.debug(f"Organization {organization_id} not found")
+        logger.debug("Organization %s not found", organization_id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Organization not found",
@@ -346,7 +357,7 @@ async def remove_user_from_organization(
 
     # Superusers can remove any user from any organization
     if current_user.role == UserRole.SUPERUSER:
-        logger.debug(f"User {current_user.id} is superuser, removing user {user_id}")
+        logger.debug("User %s is superuser, removing user %s", current_user.id, user_id)
         user = await organization_service.remove_user_from_organization(
             user_id, admin_user_id=current_user.id
         )
@@ -359,7 +370,7 @@ async def remove_user_from_organization(
 
     if not has_access:
         logger.debug(
-            f"User {current_user.id} does not have access to org {organization_id}"
+            "User %s does not have access to org %s", current_user.id, organization_id
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -372,13 +383,13 @@ async def remove_user_from_organization(
     )
 
     if not can_remove:
-        logger.debug(f"User {current_user.id} cannot remove user {user_id}")
+        logger.debug("User %s cannot remove user %s", current_user.id, user_id)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to remove this user",
         )
 
-    logger.debug(f"User {current_user.id} has permission, removing user {user_id}")
+    logger.debug("User %s has permission, removing user %s", current_user.id, user_id)
     user = await organization_service.remove_user_from_organization(
         user_id, admin_user_id=current_user.id
     )
@@ -402,7 +413,7 @@ async def remove_user_from_organization_path(
     from app.core.config import logger
 
     logger.debug(
-        f"Removing user {user_id} from organization {organization_id} (path params)"
+        "Removing user %s from organization %s (path params)", user_id, organization_id
     )
 
     organization_service = OrganizationService(db)
@@ -413,7 +424,7 @@ async def remove_user_from_organization_path(
     user_service = UserService(db)
     user_exists = await user_service.get_user_by_id(user_id)
     if not user_exists:
-        logger.debug(f"User {user_id} not found")
+        logger.debug("User %s not found", user_id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
@@ -422,7 +433,7 @@ async def remove_user_from_organization_path(
     # Check if organization exists
     org = await organization_service.get_organization_by_id(organization_id)
     if not org:
-        logger.debug(f"Organization {organization_id} not found")
+        logger.debug("Organization %s not found", organization_id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Organization not found",
@@ -430,7 +441,7 @@ async def remove_user_from_organization_path(
 
     # Superusers can remove any user from any organization
     if current_user.role == UserRole.SUPERUSER:
-        logger.debug(f"User {current_user.id} is superuser, removing user {user_id}")
+        logger.debug("User %s is superuser, removing user %s", current_user.id, user_id)
         user = await organization_service.remove_user_from_organization(
             user_id, admin_user_id=current_user.id
         )
@@ -443,7 +454,7 @@ async def remove_user_from_organization_path(
 
     if not has_access:
         logger.debug(
-            f"User {current_user.id} does not have access to org {organization_id}"
+            "User %s does not have access to org %s", current_user.id, organization_id
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -456,13 +467,13 @@ async def remove_user_from_organization_path(
     )
 
     if not can_remove:
-        logger.debug(f"User {current_user.id} cannot remove user {user_id}")
+        logger.debug("User %s cannot remove user %s", current_user.id, user_id)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You don't have permission to remove this user",
         )
 
-    logger.debug(f"User {current_user.id} has permission, removing user {user_id}")
+    logger.debug("User %s has permission, removing user %s", current_user.id, user_id)
     user = await organization_service.remove_user_from_organization(
         user_id, admin_user_id=current_user.id
     )
@@ -483,14 +494,14 @@ async def read_organization_users(
     """
     from app.core.config import logger
 
-    logger.debug(f"Getting users for organization {organization_id}")
+    logger.debug("Getting users for organization %s", organization_id)
 
     organization_service = OrganizationService(db)
 
     # Check if organization exists
     org = await organization_service.get_organization_by_id(organization_id)
     if not org:
-        logger.debug(f"Organization {organization_id} not found")
+        logger.debug("Organization %s not found", organization_id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Organization not found",
@@ -499,7 +510,9 @@ async def read_organization_users(
     # Superusers can see users in any organization
     if current_user.role == UserRole.SUPERUSER:
         logger.debug(
-            f"User {current_user.id} is superuser, getting all users for org {organization_id}"
+            "User %s is superuser, getting all users for org %s",
+            current_user.id,
+            organization_id,
         )
         users = await organization_service.get_organization_users(organization_id)
         return users
@@ -511,7 +524,7 @@ async def read_organization_users(
 
     if not has_access:
         logger.debug(
-            f"User {current_user.id} does not have access to org {organization_id}"
+            "User %s does not have access to org %s", current_user.id, organization_id
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -519,7 +532,7 @@ async def read_organization_users(
         )
 
     logger.debug(
-        f"User {current_user.id} has access, getting users for org {organization_id}"
+        "User %s has access, getting users for org %s", current_user.id, organization_id
     )
     users = await organization_service.get_organization_users(organization_id)
     return users
@@ -540,14 +553,14 @@ async def read_organization_users_path(
     """
     from app.core.config import logger
 
-    logger.debug(f"Getting users for organization {organization_id} (path params)")
+    logger.debug("Getting users for organization %s (path params)", organization_id)
 
     organization_service = OrganizationService(db)
 
     # Check if organization exists
     org = await organization_service.get_organization_by_id(organization_id)
     if not org:
-        logger.debug(f"Organization {organization_id} not found")
+        logger.debug("Organization %s not found", organization_id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Organization not found",
@@ -556,7 +569,9 @@ async def read_organization_users_path(
     # Superusers can see users in any organization
     if current_user.role == UserRole.SUPERUSER:
         logger.debug(
-            f"User {current_user.id} is superuser, getting all users for org {organization_id}"
+            "User %s is superuser, getting all users for org %s",
+            current_user.id,
+            organization_id,
         )
         users = await organization_service.get_organization_users(organization_id)
         return users
@@ -568,7 +583,7 @@ async def read_organization_users_path(
 
     if not has_access:
         logger.debug(
-            f"User {current_user.id} does not have access to org {organization_id}"
+            "User %s does not have access to org %s", current_user.id, organization_id
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -576,7 +591,7 @@ async def read_organization_users_path(
         )
 
     logger.debug(
-        f"User {current_user.id} has access, getting users for org {organization_id}"
+        "User %s has access, getting users for org %s", current_user.id, organization_id
     )
     users = await organization_service.get_organization_users(organization_id)
     return users

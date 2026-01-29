@@ -2,8 +2,8 @@ from datetime import datetime, timedelta
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
 
-from jose import jwt
-from passlib.context import CryptContext
+import bcrypt
+import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
@@ -12,16 +12,15 @@ from app.db.models import User, UserRole
 
 UTC = ZoneInfo("UTC")
 
-# Setup password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"), hashed_password.encode("utf-8")
+    )
 
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 class UserService:
@@ -48,7 +47,7 @@ class UserService:
         role: UserRole = UserRole.USER,
         organization_id: Optional[int] = None,
     ) -> User:
-        logger.debug(f"Creating user: {username}, role: {role}")
+        logger.debug("Creating user: %s, role: %s", username, role)
         hashed_password = get_password_hash(password)
 
         user = User(
@@ -63,7 +62,7 @@ class UserService:
         await self.db.commit()
         await self.db.refresh(user)
 
-        logger.debug(f"User created successfully: {username} with ID {user.id}")
+        logger.debug("User created successfully: %s with ID %s", username, user.id)
         return user
 
     async def update_user(
@@ -115,22 +114,22 @@ class UserService:
         return True
 
     async def authenticate_user(self, username: str, password: str) -> Optional[User]:
-        logger.debug(f"Authenticating user: {username}")
+        logger.debug("Authenticating user: %s", username)
         user = await self.get_user_by_username(username)
 
         if not user:
-            logger.debug(f"User not found: {username}")
+            logger.debug("User not found: %s", username)
             return None
 
         if not user.is_active:
-            logger.debug(f"User is inactive: {username}")
+            logger.debug("User is inactive: %s", username)
             return None
 
         if not verify_password(password, user.hashed_password):
-            logger.debug(f"Invalid password for user: {username}")
+            logger.debug("Invalid password for user: %s", username)
             return None
 
-        logger.debug(f"Authentication successful: {username}")
+        logger.debug("Authentication successful: %s", username)
         return user
 
     def create_access_token(
@@ -145,9 +144,9 @@ class UserService:
                 minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
             )
 
-        to_encode.update({"exp": expire.timestamp()})
+        to_encode.update({"exp": int(expire.timestamp())})
 
-        encoded_jwt = jwt.encode(
+        encoded_jwt: str = jwt.encode(
             to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
         )
 

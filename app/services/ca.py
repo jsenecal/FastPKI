@@ -1,9 +1,9 @@
+import re
 from datetime import datetime, timedelta
 from typing import Optional
 from zoneinfo import ZoneInfo
 
 from cryptography import x509
-from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
@@ -23,7 +23,6 @@ class CAService:
         private_key = rsa.generate_private_key(
             public_exponent=65537,
             key_size=key_size,
-            backend=default_backend(),
         )
 
         private_key_pem = private_key.private_bytes(
@@ -38,9 +37,9 @@ class CAService:
     def parse_subject_dn(subject_dn: str) -> x509.Name:
         """Parse a subject DN string into a cryptography Name object."""
         parts = {}
-        for part in subject_dn.split(","):
+        for part in re.split(r"(?<!\\),", subject_dn):
             key, value = part.strip().split("=", 1)
-            parts[key.strip()] = value.strip()
+            parts[key.strip()] = value.strip().replace("\\,", ",")
 
         name_attributes = []
 
@@ -123,7 +122,6 @@ class CAService:
         certificate = cert_builder.sign(
             private_key=private_key,
             algorithm=hashes.SHA256(),
-            backend=default_backend(),
         )
 
         # Encode certificate to PEM
@@ -156,7 +154,7 @@ class CAService:
     async def list_cas(db: AsyncSession) -> list[CertificateAuthority]:
         """List all Certificate Authorities."""
         result = await db.execute(select(CertificateAuthority))
-        return result.scalars().all()
+        return list(result.scalars().all())
 
     @staticmethod
     async def delete_ca(db: AsyncSession, ca_id: int) -> bool:

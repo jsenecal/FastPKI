@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
@@ -52,18 +50,17 @@ async def export_test_cert_without_key(
         common_name="export-no-key.example.com",
         subject_dn="CN=export-no-key.example.com,O=Test Organization,C=US",
         certificate_type=CertificateType.SERVER,
-        include_private_key=False,  # Create without private key
+        include_private_key=False,
     )
-
     return cert
 
 
 @pytest.mark.asyncio
 async def test_export_ca_certificate(
-    client: AsyncClient, export_test_ca: CertificateAuthority
+    superuser_client: AsyncClient, export_test_ca: CertificateAuthority
 ):
     """Test exporting a CA certificate."""
-    response = await client.get(
+    response = await superuser_client.get(
         f"{settings.API_V1_STR}/export/ca/{export_test_ca.id}/certificate"
     )
 
@@ -79,10 +76,10 @@ async def test_export_ca_certificate(
 
 @pytest.mark.asyncio
 async def test_export_ca_private_key(
-    client: AsyncClient, export_test_ca: CertificateAuthority
+    superuser_client: AsyncClient, export_test_ca: CertificateAuthority
 ):
     """Test exporting a CA private key."""
-    response = await client.get(
+    response = await superuser_client.get(
         f"{settings.API_V1_STR}/export/ca/{export_test_ca.id}/private-key"
     )
 
@@ -97,9 +94,11 @@ async def test_export_ca_private_key(
 
 
 @pytest.mark.asyncio
-async def test_export_certificate(client: AsyncClient, export_test_cert: Certificate):
+async def test_export_certificate(
+    superuser_client: AsyncClient, export_test_cert: Certificate
+):
     """Test exporting a certificate."""
-    response = await client.get(
+    response = await superuser_client.get(
         f"{settings.API_V1_STR}/export/certificate/{export_test_cert.id}"
     )
 
@@ -115,10 +114,10 @@ async def test_export_certificate(client: AsyncClient, export_test_cert: Certifi
 
 @pytest.mark.asyncio
 async def test_export_certificate_private_key(
-    client: AsyncClient, export_test_cert: Certificate
+    superuser_client: AsyncClient, export_test_cert: Certificate
 ):
     """Test exporting a certificate private key."""
-    response = await client.get(
+    response = await superuser_client.get(
         f"{settings.API_V1_STR}/export/certificate/{export_test_cert.id}/private-key"
     )
 
@@ -133,63 +132,24 @@ async def test_export_certificate_private_key(
 
 
 @pytest.mark.asyncio
-async def test_export_certificate_without_private_key():
+async def test_export_certificate_without_private_key(
+    superuser_client: AsyncClient, export_test_cert_without_key: Certificate
+):
     """Test exporting a certificate that doesn't have a private key."""
-    # Create a mock FastAPI app for testing
-    from fastapi import FastAPI
-    from fastapi.testclient import TestClient
-
-    app = FastAPI()
-
-    # Create mock certificate with no private key
-    mock_cert = Certificate(
-        id=999,
-        common_name="test-no-key.example.com",
-        certificate="TEST CERTIFICATE",
-        private_key=None,  # Explicitly None
-        serial_number="12345",
-        not_before=datetime.now(),
-        not_after=datetime.now(),
-        certificate_type=CertificateType.SERVER,
+    response = await superuser_client.get(
+        f"{settings.API_V1_STR}/export/certificate/{export_test_cert_without_key.id}/private-key"
     )
 
-    # Create mock certificate service
-    async def mock_get_certificate(*args, **kwargs):
-        return mock_cert
-
-    # Import the endpoint
-    from app.api.export import export_certificate_private_key
-
-    # Add route with mocked dependency
-    @app.get("/api/v1/export/certificate/{cert_id}/private-key")
-    async def test_endpoint(cert_id: int):
-        from app.services.cert import CertificateService
-
-        # Monkey patch the CertificateService.get_certificate method
-        orig_method = CertificateService.get_certificate
-        CertificateService.get_certificate = mock_get_certificate
-        try:
-            # Call the actual endpoint function
-            return await export_certificate_private_key(cert_id=cert_id)
-        finally:
-            # Restore the original method
-            CertificateService.get_certificate = orig_method
-
-    # Use TestClient for synchronous testing
-    client = TestClient(app)
-    response = client.get("/api/v1/export/certificate/999/private-key")
-
-    # Assertions
     assert response.status_code == 404
     assert "does not have a private key" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
 async def test_export_certificate_chain(
-    client: AsyncClient, export_test_cert: Certificate
+    superuser_client: AsyncClient, export_test_cert: Certificate
 ):
     """Test exporting a certificate chain."""
-    response = await client.get(
+    response = await superuser_client.get(
         f"{settings.API_V1_STR}/export/certificate/{export_test_cert.id}/chain"
     )
 
@@ -206,18 +166,22 @@ async def test_export_certificate_chain(
 
 
 @pytest.mark.asyncio
-async def test_export_nonexistent_ca(client: AsyncClient):
+async def test_export_nonexistent_ca(superuser_client: AsyncClient):
     """Test exporting a nonexistent CA."""
-    response = await client.get(f"{settings.API_V1_STR}/export/ca/9999/certificate")
+    response = await superuser_client.get(
+        f"{settings.API_V1_STR}/export/ca/9999/certificate"
+    )
 
     assert response.status_code == 404
     assert "not found" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
-async def test_export_nonexistent_certificate(client: AsyncClient):
+async def test_export_nonexistent_certificate(superuser_client: AsyncClient):
     """Test exporting a nonexistent certificate."""
-    response = await client.get(f"{settings.API_V1_STR}/export/certificate/9999")
+    response = await superuser_client.get(
+        f"{settings.API_V1_STR}/export/certificate/9999"
+    )
 
     assert response.status_code == 404
     assert "not found" in response.json()["detail"]

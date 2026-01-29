@@ -6,7 +6,7 @@ from app.core.config import settings
 
 
 @pytest.mark.asyncio
-async def test_create_ca(client: AsyncClient):
+async def test_create_ca(superuser_client: AsyncClient):
     # Test creating a CA
     ca_data = {
         "name": "Test CA",
@@ -16,7 +16,7 @@ async def test_create_ca(client: AsyncClient):
         "valid_days": 3650,
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/cas/",
         json=ca_data,
     )
@@ -35,21 +35,21 @@ async def test_create_ca(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_cas(client: AsyncClient):
+async def test_get_cas(superuser_client: AsyncClient):
     # First create a CA
     ca_data = {
         "name": "Another CA",
         "subject_dn": "CN=Another CA,O=Test Organization,C=US",
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/cas/",
         json=ca_data,
     )
     assert response.status_code == status.HTTP_201_CREATED
 
     # Now test getting the list of CAs
-    response = await client.get(f"{settings.API_V1_STR}/cas/")
+    response = await superuser_client.get(f"{settings.API_V1_STR}/cas/")
 
     assert response.status_code == status.HTTP_200_OK
     cas = response.json()
@@ -62,14 +62,14 @@ async def test_get_cas(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_ca(client: AsyncClient):
+async def test_get_ca(superuser_client: AsyncClient):
     # First create a CA
     ca_data = {
         "name": "CA to Get",
         "subject_dn": "CN=CA to Get,O=Test Organization,C=US",
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/cas/",
         json=ca_data,
     )
@@ -78,7 +78,7 @@ async def test_get_ca(client: AsyncClient):
     ca_id = created_ca["id"]
 
     # Now test getting a specific CA
-    response = await client.get(f"{settings.API_V1_STR}/cas/{ca_id}")
+    response = await superuser_client.get(f"{settings.API_V1_STR}/cas/{ca_id}")
 
     assert response.status_code == status.HTTP_200_OK
     retrieved_ca = response.json()
@@ -91,14 +91,14 @@ async def test_get_ca(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_ca_private_key(client: AsyncClient):
+async def test_get_ca_private_key(superuser_client: AsyncClient):
     # First create a CA
     ca_data = {
         "name": "CA with Private Key",
         "subject_dn": "CN=CA with Private Key,O=Test Organization,C=US",
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/cas/",
         json=ca_data,
     )
@@ -107,7 +107,9 @@ async def test_get_ca_private_key(client: AsyncClient):
     ca_id = created_ca["id"]
 
     # Now test getting a specific CA with private key
-    response = await client.get(f"{settings.API_V1_STR}/cas/{ca_id}/private-key")
+    response = await superuser_client.get(
+        f"{settings.API_V1_STR}/cas/{ca_id}/private-key"
+    )
 
     assert response.status_code == status.HTTP_200_OK
     retrieved_ca = response.json()
@@ -120,14 +122,14 @@ async def test_get_ca_private_key(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_delete_ca(client: AsyncClient):
+async def test_delete_ca(superuser_client: AsyncClient):
     # First create a CA
     ca_data = {
         "name": "CA to Delete",
         "subject_dn": "CN=CA to Delete,O=Test Organization,C=US",
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/cas/",
         json=ca_data,
     )
@@ -136,10 +138,29 @@ async def test_delete_ca(client: AsyncClient):
     ca_id = created_ca["id"]
 
     # Now test deleting the CA
-    response = await client.delete(f"{settings.API_V1_STR}/cas/{ca_id}")
+    response = await superuser_client.delete(f"{settings.API_V1_STR}/cas/{ca_id}")
 
     assert response.status_code == status.HTTP_204_NO_CONTENT
 
     # Verify it's deleted
-    response = await client.get(f"{settings.API_V1_STR}/cas/{ca_id}")
+    response = await superuser_client.get(f"{settings.API_V1_STR}/cas/{ca_id}")
     assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_unauthenticated_ca_access(client: AsyncClient):
+    """Test that unauthenticated requests to CA endpoints return 401."""
+    response = await client.get(f"{settings.API_V1_STR}/cas/")
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    response = await client.post(
+        f"{settings.API_V1_STR}/cas/",
+        json={
+            "name": "Unauth CA",
+            "subject_dn": "CN=Unauth,C=US",
+        },
+    )
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    response = await client.delete(f"{settings.API_V1_STR}/cas/1")
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED

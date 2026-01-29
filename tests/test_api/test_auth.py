@@ -1,7 +1,7 @@
 import logging
 
+import jwt
 import pytest
-from jose import jwt
 
 from app.core.config import logger, settings
 from app.db.models import UserRole

@@ -16,6 +16,8 @@ class CertificateCreate(BaseModel):
 
 
 class CertificateResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
     id: int
     common_name: str
     subject_dn: str

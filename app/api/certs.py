@@ -3,7 +3,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db
+from app.api.deps import get_current_active_admin_user, get_current_active_user, get_db
+from app.db.models import User
 from app.schemas.cert import (
     CertificateCreate,
     CertificateDetailResponse,
@@ -22,6 +23,7 @@ async def create_certificate(
     cert_in: CertificateCreate,
     ca_id: int,
     db: AsyncSession = Depends(get_db),  # noqa: B008
+    current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> CertificateDetailResponse:
     """Create a new certificate signed by the specified CA."""
     try:
@@ -53,6 +55,7 @@ async def create_certificate(
 async def read_certificates(
     ca_id: Optional[int] = Query(None, description="Filter by CA ID"),
     db: AsyncSession = Depends(get_db),  # noqa: B008
+    current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> list[CertificateResponse]:
     """Get all certificates, optionally filtered by CA ID."""
     certs = await CertificateService.list_certificates(db, ca_id=ca_id)
@@ -63,6 +66,7 @@ async def read_certificates(
 async def read_certificate(
     cert_id: int,
     db: AsyncSession = Depends(get_db),  # noqa: B008
+    current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> CertificateResponse:
     """Get a specific certificate by ID."""
     cert = await CertificateService.get_certificate(db, cert_id)
@@ -78,6 +82,7 @@ async def read_certificate(
 async def read_certificate_with_private_key(
     cert_id: int,
     db: AsyncSession = Depends(get_db),  # noqa: B008
+    current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> CertificateDetailResponse:
     """Get a specific certificate by ID, including private key if available."""
     cert = await CertificateService.get_certificate(db, cert_id)
@@ -94,11 +99,18 @@ async def revoke_certificate(
     cert_id: int,
     revoke_data: CertificateRevoke,
     db: AsyncSession = Depends(get_db),  # noqa: B008
+    current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> CertificateResponse:
     """Revoke a certificate by ID."""
-    cert = await CertificateService.revoke_certificate(
-        db, cert_id, reason=revoke_data.reason
-    )
+    try:
+        cert = await CertificateService.revoke_certificate(
+            db, cert_id, reason=revoke_data.reason
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e),
+        ) from e
     if not cert:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

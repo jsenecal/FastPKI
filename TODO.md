@@ -31,6 +31,9 @@ Our goal is to create a comprehensive authentication and authorization system wi
   - [x] Add role enumeration (SUPERUSER, ADMIN, USER)
   - [x] Create organization management endpoints
   - [ ] Fix organization API tests (3 tests failing with 404 errors)
+- [ ] Consolidate duplicate `get_current_user` implementations (one in `app/api/auth.py`, another in `app/api/deps.py` with different behavior)
+- [ ] Consolidate duplicate `oauth2_scheme` definitions (pointing to different URLs in `auth.py` vs `deps.py`)
+- [ ] Use a single dependency injection pattern for database sessions (`get_session` vs `get_db` used inconsistently across endpoints)
 
 ### 3. Permission System
 
@@ -45,6 +48,9 @@ Our goal is to create a comprehensive authentication and authorization system wi
 
 ### 4. Secure API Endpoints
 
+- [ ] Add authentication to CA endpoints (currently completely unauthenticated)
+- [ ] Add authentication to Certificate endpoints (currently completely unauthenticated)
+- [ ] Add authentication to Export endpoints (private keys downloadable without auth)
 - [ ] Update existing endpoints with permission checks
   - [ ] Write tests for CA endpoints with permission checks
   - [ ] Write tests for Certificate endpoints with permission checks
@@ -62,6 +68,36 @@ Our goal is to create a comprehensive authentication and authorization system wi
   - [ ] Implement AuditService
   - [ ] Add audit logging to all security-sensitive operations
   - [ ] Create audit log query endpoints
+
+## Security Hardening
+
+- [ ] Remove hardcoded default `SECRET_KEY` (`"supersecretkey"` in `config.py`); require it to be set via environment or fail at startup
+- [ ] Replace `python-jose` with `PyJWT` or `joserfc` (python-jose is unmaintained and has known CVEs)
+- [ ] Encrypt private keys at rest in the database (CA and certificate keys are stored as plaintext PEM)
+- [ ] Prevent double-revocation of certificates (`revoke_certificate` doesn't check current status, creating duplicate CRL entries)
+- [ ] Replace f-string logging with `%s`-style formatting to avoid unnecessary evaluation and potential data leakage
+
+## Bug Fixes
+
+- [ ] Fix `CRLEntry.ca_id` type mismatch: field is non-nullable (`int`) but is assigned from `cert.issuer_id` which is `Optional[int]`
+- [ ] Add `model_config = {"from_attributes": True}` to `CAResponse` and `CertificateResponse` schemas (required for ORM instance conversion)
+- [ ] Fix `list_cas` and `list_certificates` return type: `.scalars().all()` returns `Sequence`, not `list`
+- [ ] Handle escaped commas in `parse_subject_dn` (e.g., `O=Foo\, Inc.` will break the parser)
+
+## Code Quality / Refactoring
+
+- [ ] Eliminate massive duplication in `app/api/organizations.py` (query-param and path-param endpoint pairs are near-identical)
+- [ ] Choose one service design pattern: static methods with `db` param (`CAService`) vs instance-based with `db` in `__init__` (`UserService`)
+- [ ] Stop raising `HTTPException` in `OrganizationService`; raise domain exceptions and translate to HTTP in the API layer
+- [ ] Ensure `updated_at` is automatically managed on all models (currently only manually set in `UserService.update_user`)
+- [ ] Avoid generating a full RSA keypair when `include_private_key=False` in `CertificateService` (expensive no-op)
+
+## Tech Debt
+
+- [ ] Replace deprecated `@app.on_event("startup")` with FastAPI `lifespan` context manager
+- [ ] Remove deprecated `default_backend()` calls from cryptography operations (no-op since cryptography 3.x)
+- [ ] Replace deprecated `sessionmaker` usage with `async_sessionmaker`
+- [ ] Set up Alembic migration configuration (alembic is a dependency but unused; `create_all` won't handle schema changes)
 
 ## Implementation Notes
 
@@ -84,7 +120,7 @@ class User(SQLModel, table=True):
     hashed_password: str
     role: UserRole = Field(default=UserRole.USER)
     is_active: bool = Field(default=True)
-    
+
     organization_id: Optional[int] = Field(foreign_key="organizations.id")
 ```
 
@@ -103,7 +139,7 @@ class Permission(SQLModel, table=True):
     permission_type: PermissionType
     resource_type: ResourceType
     resource_id: int
-    
+
     # Target of permission (user or organization)
     user_id: Optional[int] = Field(foreign_key="users.id")
     organization_id: Optional[int] = Field(foreign_key="organizations.id")

@@ -13,6 +13,8 @@ class CACreate(BaseModel):
 
 
 class CAResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
     id: int
     name: str
     description: Optional[str] = None

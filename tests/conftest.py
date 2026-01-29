@@ -8,13 +8,18 @@ from typing import Optional
 import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 from sqlmodel import SQLModel
 
 from app.api import api_router
-from app.api.deps import get_current_active_user, get_current_user
+from app.api.deps import (
+    get_current_active_admin_user,
+    get_current_active_superuser,
+    get_current_active_user,
+    get_current_user,
+    get_db,
+)
 from app.core.config import logger, settings
 from app.db.models import User, UserRole
 from app.db.session import get_session
@@ -35,7 +40,7 @@ test_engine = create_async_engine(
 )
 
 # Create test session
-test_session_maker = sessionmaker(
+test_session_maker = async_sessionmaker(
     test_engine, class_=AsyncSession, expire_on_commit=False
 )
 
@@ -99,6 +104,7 @@ async def client(setup_db) -> AsyncGenerator[AsyncClient, None]:
 
     # Override the dependency
     app.dependency_overrides[get_session] = get_test_session
+    app.dependency_overrides[get_db] = get_test_session
 
     # Create test client using ASGITransport
     transport = ASGITransport(app=app)
@@ -214,7 +220,7 @@ class TestAuth:
     def __init__(self, user: Optional[User] = None):
         self.user = user
 
-    async def __call__(self, *args, **kwargs):
+    async def __call__(self) -> Optional[User]:
         return self.user
 
 
@@ -227,9 +233,27 @@ def auth_override_app():
 
         # Override the dependency
         app.dependency_overrides[get_session] = get_test_session
+        app.dependency_overrides[get_db] = get_test_session
         app.dependency_overrides[get_current_user] = TestAuth(user)
         app.dependency_overrides[get_current_active_user] = TestAuth(user)
 
         return app
 
     return _auth_override_app
+
+
+@pytest_asyncio.fixture
+async def superuser_client(setup_db, superuser) -> AsyncGenerator[AsyncClient, None]:
+    """Client with superuser authentication overrides for all auth dependencies."""
+    app = create_test_app()
+
+    app.dependency_overrides[get_session] = get_test_session
+    app.dependency_overrides[get_db] = get_test_session
+    app.dependency_overrides[get_current_user] = TestAuth(superuser)
+    app.dependency_overrides[get_current_active_user] = TestAuth(superuser)
+    app.dependency_overrides[get_current_active_superuser] = TestAuth(superuser)
+    app.dependency_overrides[get_current_active_admin_user] = TestAuth(superuser)
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        yield c

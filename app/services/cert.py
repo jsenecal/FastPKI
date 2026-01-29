@@ -3,7 +3,6 @@ from typing import Optional
 from zoneinfo import ZoneInfo
 
 from cryptography import x509
-from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.x509.oid import ExtendedKeyUsageOID
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,17 +40,15 @@ class CertificateService:
         # Get the CA
         ca = await db.get(CertificateAuthority, ca_id)
         if not ca:
-            raise ValueError(f"No CA: {ca_id}")
+            raise ValueError(f"No CA: {ca_id}")  # noqa: TRY003
 
         # Load CA private key and certificate
         ca_private_key = serialization.load_pem_private_key(
             ca.private_key.encode("utf-8"),
             password=None,
-            backend=default_backend(),
         )
         ca_cert = x509.load_pem_x509_certificate(
             ca.certificate.encode("utf-8"),
-            backend=default_backend(),
         )
 
         # Generate key pair for the new certificate if needed
@@ -138,7 +135,6 @@ class CertificateService:
         certificate = cert_builder.sign(
             private_key=ca_private_key,
             algorithm=hashes.SHA256(),
-            backend=default_backend(),
         )
 
         # Encode certificate to PEM
@@ -183,7 +179,7 @@ class CertificateService:
             query = select(Certificate)
 
         result = await db.execute(query)
-        return result.scalars().all()
+        return list(result.scalars().all())
 
     @staticmethod
     async def revoke_certificate(
@@ -194,6 +190,12 @@ class CertificateService:
 
         if not cert:
             return None
+
+        if cert.status == CertificateStatus.REVOKED:
+            raise ValueError("Certificate is already revoked")  # noqa: TRY003
+
+        if cert.issuer_id is None:
+            raise ValueError("Certificate has no issuer and cannot be revoked")  # noqa: TRY003
 
         # Update certificate status
         cert.status = CertificateStatus.REVOKED

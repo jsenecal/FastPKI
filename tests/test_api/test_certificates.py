@@ -6,14 +6,14 @@ from app.core.config import settings
 
 
 @pytest.mark.asyncio
-async def test_create_certificate(client: AsyncClient):
+async def test_create_certificate(superuser_client: AsyncClient):
     # First create a CA
     ca_data = {
         "name": "Test CA for Certs",
         "subject_dn": "CN=Test CA for Certs,O=Test Organization,C=US",
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/cas/",
         json=ca_data,
     )
@@ -31,7 +31,7 @@ async def test_create_certificate(client: AsyncClient):
         "include_private_key": True,
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/certificates/?ca_id={ca_id}",
         json=cert_data,
     )
@@ -52,14 +52,14 @@ async def test_create_certificate(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_certificates(client: AsyncClient):
+async def test_get_certificates(superuser_client: AsyncClient):
     # First create a CA
     ca_data = {
         "name": "Another CA for Certs",
         "subject_dn": "CN=Another CA for Certs,O=Test Organization,C=US",
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/cas/",
         json=ca_data,
     )
@@ -74,14 +74,14 @@ async def test_get_certificates(client: AsyncClient):
         "certificate_type": "server",
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/certificates/?ca_id={ca_id}",
         json=cert_data,
     )
     assert response.status_code == status.HTTP_201_CREATED
 
     # Now test getting the list of certificates
-    response = await client.get(f"{settings.API_V1_STR}/certificates/")
+    response = await superuser_client.get(f"{settings.API_V1_STR}/certificates/")
 
     assert response.status_code == status.HTTP_200_OK
     certs = response.json()
@@ -93,7 +93,9 @@ async def test_get_certificates(client: AsyncClient):
     assert "private_key" not in certs[0]  # Private key not included in list
 
     # Test filtering by CA ID
-    response = await client.get(f"{settings.API_V1_STR}/certificates/?ca_id={ca_id}")
+    response = await superuser_client.get(
+        f"{settings.API_V1_STR}/certificates/?ca_id={ca_id}"
+    )
 
     assert response.status_code == status.HTTP_200_OK
     filtered_certs = response.json()
@@ -104,14 +106,14 @@ async def test_get_certificates(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_certificate(client: AsyncClient):
+async def test_get_certificate(superuser_client: AsyncClient):
     # First create a CA
     ca_data = {
         "name": "CA for Cert Detail",
         "subject_dn": "CN=CA for Cert Detail,O=Test Organization,C=US",
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/cas/",
         json=ca_data,
     )
@@ -126,7 +128,7 @@ async def test_get_certificate(client: AsyncClient):
         "certificate_type": "server",
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/certificates/?ca_id={ca_id}",
         json=cert_data,
     )
@@ -135,7 +137,9 @@ async def test_get_certificate(client: AsyncClient):
     cert_id = created_cert["id"]
 
     # Now test getting a specific certificate
-    response = await client.get(f"{settings.API_V1_STR}/certificates/{cert_id}")
+    response = await superuser_client.get(
+        f"{settings.API_V1_STR}/certificates/{cert_id}"
+    )
 
     assert response.status_code == status.HTTP_200_OK
     retrieved_cert = response.json()
@@ -148,14 +152,14 @@ async def test_get_certificate(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_certificate_with_private_key(client: AsyncClient):
+async def test_get_certificate_with_private_key(superuser_client: AsyncClient):
     # First create a CA
     ca_data = {
         "name": "CA for Cert with Key",
         "subject_dn": "CN=CA for Cert with Key,O=Test Organization,C=US",
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/cas/",
         json=ca_data,
     )
@@ -171,7 +175,7 @@ async def test_get_certificate_with_private_key(client: AsyncClient):
         "include_private_key": True,
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/certificates/?ca_id={ca_id}",
         json=cert_data,
     )
@@ -180,7 +184,7 @@ async def test_get_certificate_with_private_key(client: AsyncClient):
     cert_id = created_cert["id"]
 
     # Now test getting a specific certificate with private key
-    response = await client.get(
+    response = await superuser_client.get(
         f"{settings.API_V1_STR}/certificates/{cert_id}/private-key"
     )
 
@@ -195,14 +199,14 @@ async def test_get_certificate_with_private_key(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_revoke_certificate(client: AsyncClient):
+async def test_revoke_certificate(superuser_client: AsyncClient):
     # First create a CA
     ca_data = {
         "name": "CA for Revoke Test",
         "subject_dn": "CN=CA for Revoke Test,O=Test Organization,C=US",
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/cas/",
         json=ca_data,
     )
@@ -217,7 +221,7 @@ async def test_revoke_certificate(client: AsyncClient):
         "certificate_type": "server",
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/certificates/?ca_id={ca_id}",
         json=cert_data,
     )
@@ -228,7 +232,7 @@ async def test_revoke_certificate(client: AsyncClient):
     # Now test revoking the certificate
     revoke_data = {"reason": "Key compromise"}
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/certificates/{cert_id}/revoke",
         json=revoke_data,
     )
@@ -239,3 +243,20 @@ async def test_revoke_certificate(client: AsyncClient):
     assert revoked_cert["id"] == cert_id
     assert revoked_cert["status"] == "revoked"
     assert revoked_cert["revoked_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_unauthenticated_certificate_access(client: AsyncClient):
+    """Test that unauthenticated requests to certificate endpoints return 401."""
+    response = await client.get(f"{settings.API_V1_STR}/certificates/")
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    response = await client.post(
+        f"{settings.API_V1_STR}/certificates/?ca_id=1",
+        json={
+            "common_name": "unauth.example.com",
+            "subject_dn": "CN=unauth.example.com,C=US",
+            "certificate_type": "server",
+        },
+    )
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED

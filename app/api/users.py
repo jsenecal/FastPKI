@@ -5,17 +5,16 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from app.api.auth import get_current_active_user, get_current_superuser
-from app.core.config import logger
+from app.api.deps import get_current_active_superuser, get_current_active_user, get_db
+from app.core.config import logger, settings
 from app.db.models import User, UserRole
-from app.db.session import get_session
 from app.schemas.user import User as UserSchema
 from app.schemas.user import UserCreate, UserUpdate
 from app.services.user import UserService
 
 # Optional OAuth2 scheme for endpoints that need to work with or without auth
 oauth2_scheme_optional = OAuth2PasswordBearer(
-    tokenUrl="/api/v1/auth/token", auto_error=False
+    tokenUrl=f"{settings.API_V1_STR}/auth/token", auto_error=False
 )
 
 router = APIRouter()
@@ -24,16 +23,16 @@ router = APIRouter()
 @router.post("/", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
 async def create_user(
     user_in: UserCreate,
-    db: AsyncSession = Depends(get_session),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
     token: Optional[str] = Depends(oauth2_scheme_optional),
 ) -> Any:
-    logger.debug(f"Create user request for username: {user_in.username}")
+    logger.debug("Create user request for username: %s", user_in.username)
     user_service = UserService(db)
 
     # Check if username already exists
     db_user = await user_service.get_user_by_username(username=user_in.username)
     if db_user:
-        logger.info(f"Create user failed: username already exists: {user_in.username}")
+        logger.info("Create user failed: username already exists: %s", user_in.username)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username already registered",
@@ -42,7 +41,7 @@ async def create_user(
     # Check if email already exists
     db_user = await user_service.get_user_by_email(email=user_in.email)
     if db_user:
-        logger.info(f"Create user failed: email already exists: {user_in.email}")
+        logger.info("Create user failed: email already exists: %s", user_in.email)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered",
@@ -52,15 +51,16 @@ async def create_user(
     current_user = None
     if token:
         try:
-            from app.api.auth import get_current_user
+            from app.api.deps import get_current_user
 
             current_user = await get_current_user(token=token, db=db)
             logger.debug(
-                f"Token provided by user: {current_user.username} "
-                f"(role: {current_user.role})"
+                "Token provided by user: %s (role: %s)",
+                current_user.username,
+                current_user.role,
             )
         except Exception as e:
-            logger.debug(f"Invalid token provided: {e!s}")
+            logger.debug("Invalid token provided: %s", e)
             # Invalid token, current_user remains None
             pass
 
@@ -68,7 +68,7 @@ async def create_user(
     result = await db.execute(select(User).limit(1))
     first_user = result.scalar_one_or_none() is None
 
-    logger.debug(f"First user check: {first_user}")
+    logger.debug("First user check: %s", first_user)
 
     # Only superusers can create users with admin/superuser roles
     # But for the first user in the system, we allow any role
@@ -78,8 +78,8 @@ async def create_user(
         and (current_user is None or current_user.role != UserRole.SUPERUSER)
     ):
         logger.info(
-            f"Create user failed: insufficient permissions to create "
-            f"{user_in.role} user"
+            "Create user failed: insufficient permissions to create %s user",
+            user_in.role,
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -96,7 +96,10 @@ async def create_user(
     )
 
     logger.info(
-        f"User created successfully: {user.username} (ID: {user.id}, Role: {user.role})"
+        "User created successfully: %s (ID: %s, Role: %s)",
+        user.username,
+        user.id,
+        user.role,
     )
     return user
 
@@ -105,8 +108,8 @@ async def create_user(
 async def read_users(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_session),  # noqa: B008
-    current_user: User = Depends(get_current_superuser),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    current_user: User = Depends(get_current_active_superuser),  # noqa: B008
 ) -> Any:
     """
     Retrieve users. Only superusers can access this endpoint.
@@ -129,7 +132,7 @@ async def read_user_me(
 @router.get("/{user_id}", response_model=UserSchema)
 async def read_user_by_id(
     user_id: int,
-    db: AsyncSession = Depends(get_session),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> Any:
     """
@@ -161,7 +164,7 @@ async def read_user_by_id(
 async def update_user(
     user_id: int,
     user_in: UserUpdate,
-    db: AsyncSession = Depends(get_session),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> Any:
     """
@@ -223,8 +226,8 @@ async def update_user(
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
     user_id: int,
-    db: AsyncSession = Depends(get_session),  # noqa: B008
-    current_user: User = Depends(get_current_superuser),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+    current_user: User = Depends(get_current_active_superuser),  # noqa: B008
 ) -> None:
     """
     Delete a user. Only superusers can delete users.

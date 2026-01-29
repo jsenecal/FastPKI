@@ -5,25 +5,24 @@ import pytest
 import pytest_asyncio
 from fastapi import status
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 from sqlmodel import SQLModel
 
 # Add the root directory to the Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from app.api import api_router
-from app.api.deps import (
+from app.api import api_router  # noqa: E402
+from app.api.deps import (  # noqa: E402
     get_current_active_admin_user,
     get_current_active_superuser,
     get_current_active_user,
     get_current_user,
     get_db,
 )
-from app.core.config import settings
-from app.db.models import User, UserRole
-from app.db.session import get_session
+from app.core.config import settings  # noqa: E402
+from app.db.models import User, UserRole  # noqa: E402
+from app.db.session import get_session  # noqa: E402
 
 # Test database for this specific test
 TEST_DATABASE_URL = "sqlite+aiosqlite:///./test_organizations.db"
@@ -36,7 +35,7 @@ test_engine = create_async_engine(
 )
 
 # Create test session
-test_session_maker = sessionmaker(
+test_session_maker = async_sessionmaker(
     test_engine, class_=AsyncSession, expire_on_commit=False
 )
 
@@ -60,7 +59,7 @@ class TestAuth:
     def __init__(self, user: User):
         self.user = user
 
-    async def __call__(self, *args, **kwargs):
+    async def __call__(self) -> User:
         return self.user
 
 
@@ -82,7 +81,7 @@ async def setup_test_db():
     )
 
     # Create test session maker for this test
-    local_session_maker = sessionmaker(
+    local_session_maker = async_sessionmaker(
         test_engine_local, class_=AsyncSession, expire_on_commit=False
     )
 
@@ -183,12 +182,12 @@ async def superuser_client(setup_test_db, test_superuser):
     # Apply the overrides
     app.dependency_overrides[get_current_user] = override_get_current_user
     app.dependency_overrides[get_current_active_user] = override_get_current_active_user
-    app.dependency_overrides[get_current_active_superuser] = (
-        override_get_current_active_superuser
-    )
-    app.dependency_overrides[get_current_active_admin_user] = (
-        override_get_current_active_admin_user
-    )
+    app.dependency_overrides[
+        get_current_active_superuser
+    ] = override_get_current_active_superuser
+    app.dependency_overrides[
+        get_current_active_admin_user
+    ] = override_get_current_active_admin_user
 
     # Create test client
     transport = ASGITransport(app=app)
@@ -220,9 +219,9 @@ async def admin_client(setup_test_db, test_admin_user):
     # Apply the overrides
     app.dependency_overrides[get_current_user] = override_get_current_user
     app.dependency_overrides[get_current_active_user] = override_get_current_active_user
-    app.dependency_overrides[get_current_active_admin_user] = (
-        override_get_current_active_admin_user
-    )
+    app.dependency_overrides[
+        get_current_active_admin_user
+    ] = override_get_current_active_admin_user
 
     # Create test client
     transport = ASGITransport(app=app)
@@ -421,7 +420,9 @@ async def test_delete_organization(superuser_client):
 async def test_add_user_to_organization(setup_test_db):
     """Test adding a user to an organization."""
     import time
+
     from fastapi import FastAPI
+
     from app.services.user import UserService
 
     # Create a test app with consistent database session
@@ -466,15 +467,15 @@ async def test_add_user_to_organization(setup_test_db):
 
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_current_user] = override_get_current_user
-        app.dependency_overrides[get_current_active_user] = (
-            override_get_current_active_user
-        )
-        app.dependency_overrides[get_current_active_superuser] = (
-            override_get_current_active_superuser
-        )
-        app.dependency_overrides[get_current_active_admin_user] = (
-            override_get_current_active_superuser
-        )
+        app.dependency_overrides[
+            get_current_active_user
+        ] = override_get_current_active_user
+        app.dependency_overrides[
+            get_current_active_superuser
+        ] = override_get_current_active_superuser
+        app.dependency_overrides[
+            get_current_active_admin_user
+        ] = override_get_current_active_superuser
 
         # Create test client
         transport = ASGITransport(app=app)
@@ -508,7 +509,9 @@ async def test_add_user_to_organization(setup_test_db):
 async def test_remove_user_from_organization(setup_test_db):
     """Test removing a user from an organization."""
     import time
+
     from fastapi import FastAPI
+
     from app.services.user import UserService
 
     # Create a test app with consistent database session
@@ -553,15 +556,15 @@ async def test_remove_user_from_organization(setup_test_db):
 
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_current_user] = override_get_current_user
-        app.dependency_overrides[get_current_active_user] = (
-            override_get_current_active_user
-        )
-        app.dependency_overrides[get_current_active_superuser] = (
-            override_get_current_active_superuser
-        )
-        app.dependency_overrides[get_current_active_admin_user] = (
-            override_get_current_active_superuser
-        )
+        app.dependency_overrides[
+            get_current_active_user
+        ] = override_get_current_active_user
+        app.dependency_overrides[
+            get_current_active_superuser
+        ] = override_get_current_active_superuser
+        app.dependency_overrides[
+            get_current_active_admin_user
+        ] = override_get_current_active_superuser
 
         # Create test client
         transport = ASGITransport(app=app)
@@ -598,7 +601,9 @@ async def test_remove_user_from_organization(setup_test_db):
 async def test_get_organization_users(setup_test_db):
     """Test getting all users in an organization."""
     import time
+
     from fastapi import FastAPI
+
     from app.services.user import UserService
 
     # Create a test app with consistent database session
@@ -643,15 +648,15 @@ async def test_get_organization_users(setup_test_db):
 
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_current_user] = override_get_current_user
-        app.dependency_overrides[get_current_active_user] = (
-            override_get_current_active_user
-        )
-        app.dependency_overrides[get_current_active_superuser] = (
-            override_get_current_active_superuser
-        )
-        app.dependency_overrides[get_current_active_admin_user] = (
-            override_get_current_active_superuser
-        )
+        app.dependency_overrides[
+            get_current_active_user
+        ] = override_get_current_active_user
+        app.dependency_overrides[
+            get_current_active_superuser
+        ] = override_get_current_active_superuser
+        app.dependency_overrides[
+            get_current_active_admin_user
+        ] = override_get_current_active_superuser
 
         # Create test client
         transport = ASGITransport(app=app)
@@ -694,9 +699,11 @@ async def test_get_organization_users(setup_test_db):
 async def test_user_access_own_organization(setup_test_db):
     """Test a user accessing their own organization."""
     import time
+
     from fastapi import FastAPI
-    from app.services.user import UserService
+
     from app.services.organization import OrganizationService
+    from app.services.user import UserService
 
     # Create a test app with consistent database session
     app = FastAPI()
@@ -755,12 +762,12 @@ async def test_user_access_own_organization(setup_test_db):
 
         app.dependency_overrides[get_db] = override_get_db
         app.dependency_overrides[get_current_user] = override_get_current_user
-        app.dependency_overrides[get_current_active_user] = (
-            override_get_current_active_user
-        )
-        app.dependency_overrides[get_current_active_admin_user] = (
-            override_get_current_active_admin_user
-        )
+        app.dependency_overrides[
+            get_current_active_user
+        ] = override_get_current_active_user
+        app.dependency_overrides[
+            get_current_active_admin_user
+        ] = override_get_current_active_admin_user
 
         # Create test client
         transport = ASGITransport(app=app)

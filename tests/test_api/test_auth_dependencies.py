@@ -1,8 +1,8 @@
+import jwt
 import pytest
 import pytest_asyncio
 from fastapi import HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
-from jose import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import (

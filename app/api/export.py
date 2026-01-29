@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db
+from app.api.deps import get_current_active_admin_user, get_current_active_user, get_db
+from app.db.models import User
 from app.services.ca import CAService
 from app.services.cert import CertificateService
 
@@ -12,6 +13,7 @@ router = APIRouter()
 async def export_ca_certificate(
     ca_id: int,
     db: AsyncSession = Depends(get_db),  # noqa: B008
+    current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> Response:
     """
     Export a CA certificate in PEM format.
@@ -36,6 +38,7 @@ async def export_ca_certificate(
 async def export_ca_private_key(
     ca_id: int,
     db: AsyncSession = Depends(get_db),  # noqa: B008
+    current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> Response:
     """
     Export a CA private key in PEM format.
@@ -60,6 +63,7 @@ async def export_ca_private_key(
 async def export_certificate(
     cert_id: int,
     db: AsyncSession = Depends(get_db),  # noqa: B008
+    current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> Response:
     """
     Export a certificate in PEM format.
@@ -84,6 +88,7 @@ async def export_certificate(
 async def export_certificate_private_key(
     cert_id: int,
     db: AsyncSession = Depends(get_db),  # noqa: B008
+    current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> Response:
     """
     Export a certificate's private key in PEM format.
@@ -116,6 +121,7 @@ async def export_certificate_private_key(
 async def export_certificate_chain(
     cert_id: int,
     db: AsyncSession = Depends(get_db),  # noqa: B008
+    current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> Response:
     """
     Export a certificate with its complete certificate chain in PEM format.

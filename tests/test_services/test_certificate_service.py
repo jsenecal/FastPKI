@@ -1,5 +1,6 @@
 import pytest
 import pytest_asyncio
+from cryptography.x509.oid import NameOID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
@@ -147,6 +148,23 @@ async def test_revoke_certificate(db: AsyncSession, test_ca: CertificateAuthorit
 
 
 @pytest.mark.asyncio
+async def test_double_revocation(db: AsyncSession, test_ca: CertificateAuthority):
+    """Test that revoking an already-revoked certificate raises ValueError."""
+    cert = await CertificateService.create_certificate(
+        db=db,
+        ca_id=test_ca.id,
+        common_name="double-revoke.example.com",
+        subject_dn="CN=double-revoke.example.com,O=Test Organization,C=US",
+        certificate_type=CertificateType.SERVER,
+    )
+
+    await CertificateService.revoke_certificate(db, cert.id, reason="Key compromise")
+
+    with pytest.raises(ValueError, match="already revoked"):
+        await CertificateService.revoke_certificate(db, cert.id, reason="Duplicate")
+
+
+@pytest.mark.asyncio
 async def test_different_cert_types(db: AsyncSession, test_ca: CertificateAuthority):
     """Test creating different types of certificates."""
     # Create a client certificate
@@ -170,3 +188,12 @@ async def test_different_cert_types(db: AsyncSession, test_ca: CertificateAuthor
     )
 
     assert ca_cert.certificate_type == CertificateType.CA
+
+
+def test_parse_subject_dn_escaped_comma():
+    """Test that escaped commas in DN values are handled correctly."""
+    name = CAService.parse_subject_dn("CN=Doe\\, John,O=Test Org,C=US")
+    cn = name.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
+    assert cn == "Doe, John"
+    org = name.get_attributes_for_oid(NameOID.ORGANIZATION_NAME)[0].value
+    assert org == "Test Org"

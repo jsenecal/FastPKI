@@ -22,7 +22,7 @@ class Settings(BaseSettings):
 
     # Database settings
     DATABASE_URL: Optional[str] = "sqlite+aiosqlite:///./fastpki.db"
-    DATABASE_CONNECT_ARGS: dict[str, Any] = {}
+    DATABASE_CONNECT_ARGS: dict[str, Any] = {}  # noqa: RUF012
 
     @field_validator("DATABASE_URL")
     def validate_database_url(cls, v: Optional[str]) -> Any:  # noqa: N805
@@ -41,15 +41,29 @@ class Settings(BaseSettings):
     CERT_DAYS: int = 365  # 1 year
 
     # Security settings
-    SECRET_KEY: str = "supersecretkey"  # Change in production
+    SECRET_KEY: str = "supersecretkey"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
     ALGORITHM: str = "HS256"
+
+    @field_validator("SECRET_KEY")
+    def validate_secret_key(cls, v: str) -> str:  # noqa: N805
+        if v == "supersecretkey":
+            import warnings
+
+            warnings.warn(
+                "SECRET_KEY is set to the default value. "
+                "Set a secure SECRET_KEY in production.",
+                stacklevel=1,
+            )
+        if len(v) < 32:
+            raise ValueError("SECRET_KEY must be at least 32 characters long")  # noqa: TRY003
+        return v
 
     # Logging
     LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
 
     # CORS settings
-    BACKEND_CORS_ORIGINS: list[str] = ["*"]
+    BACKEND_CORS_ORIGINS: list[str] = ["*"]  # noqa: RUF012
 
 
 settings = Settings()

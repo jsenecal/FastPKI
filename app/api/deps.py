@@ -1,9 +1,9 @@
 from collections.abc import AsyncGenerator
 
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt
-from jose.exceptions import JWTError
+from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,13 +12,10 @@ from app.db.models import User, UserRole
 from app.db.session import get_session
 from app.schemas.user import TokenPayload
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/token")
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    # Note: we call 'get_session()' (don't await it) so FastAPI can use it as a
-    # dependency. This is because get_session returns an async generator which will
-    # be awaited by FastAPI
     async for session in get_session():
         yield session
 
@@ -40,8 +37,8 @@ async def get_current_user(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
         token_data = TokenPayload(**payload)
-    except (JWTError, ValidationError):
-        raise credentials_exception
+    except (InvalidTokenError, ValidationError) as err:
+        raise credentials_exception from err
 
     from app.services.user import UserService
 

@@ -7,7 +7,7 @@ from app.db.models import CertificateType
 
 
 @pytest.mark.asyncio
-async def test_export_ca_certificate(client: AsyncClient):
+async def test_export_ca_certificate(superuser_client: AsyncClient):
     """Test exporting a CA certificate in PEM format."""
     # First create a CA
     ca_data = {
@@ -15,7 +15,7 @@ async def test_export_ca_certificate(client: AsyncClient):
         "subject_dn": "CN=Export Test CA,O=Test Organization,C=US",
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/cas/",
         json=ca_data,
     )
@@ -24,7 +24,9 @@ async def test_export_ca_certificate(client: AsyncClient):
     ca_id = created_ca["id"]
 
     # Now test exporting the CA certificate
-    response = await client.get(f"{settings.API_V1_STR}/export/ca/{ca_id}/certificate")
+    response = await superuser_client.get(
+        f"{settings.API_V1_STR}/export/ca/{ca_id}/certificate"
+    )
 
     assert response.status_code == status.HTTP_200_OK
     assert response.headers["Content-Type"] == "application/x-pem-file"
@@ -37,7 +39,7 @@ async def test_export_ca_certificate(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_export_ca_private_key(client: AsyncClient):
+async def test_export_ca_private_key(superuser_client: AsyncClient):
     """Test exporting a CA private key in PEM format."""
     # First create a CA
     ca_data = {
@@ -45,7 +47,7 @@ async def test_export_ca_private_key(client: AsyncClient):
         "subject_dn": "CN=Export Key Test CA,O=Test Organization,C=US",
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/cas/",
         json=ca_data,
     )
@@ -54,7 +56,9 @@ async def test_export_ca_private_key(client: AsyncClient):
     ca_id = created_ca["id"]
 
     # Now test exporting the CA private key
-    response = await client.get(f"{settings.API_V1_STR}/export/ca/{ca_id}/private-key")
+    response = await superuser_client.get(
+        f"{settings.API_V1_STR}/export/ca/{ca_id}/private-key"
+    )
 
     assert response.status_code == status.HTTP_200_OK
     assert response.headers["Content-Type"] == "application/x-pem-file"
@@ -67,7 +71,7 @@ async def test_export_ca_private_key(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_export_certificate(client: AsyncClient):
+async def test_export_certificate(superuser_client: AsyncClient):
     """Test exporting a certificate in PEM format."""
     # First create a CA
     ca_data = {
@@ -75,7 +79,7 @@ async def test_export_certificate(client: AsyncClient):
         "subject_dn": "CN=Cert Export Test CA,O=Test Organization,C=US",
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/cas/",
         json=ca_data,
     )
@@ -90,7 +94,7 @@ async def test_export_certificate(client: AsyncClient):
         "certificate_type": "server",
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/certificates/?ca_id={ca_id}",
         json=cert_data,
     )
@@ -99,7 +103,9 @@ async def test_export_certificate(client: AsyncClient):
     cert_id = created_cert["id"]
 
     # Now test exporting the certificate
-    response = await client.get(f"{settings.API_V1_STR}/export/certificate/{cert_id}")
+    response = await superuser_client.get(
+        f"{settings.API_V1_STR}/export/certificate/{cert_id}"
+    )
 
     assert response.status_code == status.HTTP_200_OK
     assert response.headers["Content-Type"] == "application/x-pem-file"
@@ -112,7 +118,7 @@ async def test_export_certificate(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_export_certificate_private_key(client: AsyncClient):
+async def test_export_certificate_private_key(superuser_client: AsyncClient):
     """Test exporting a certificate's private key in PEM format."""
     # First create a CA
     ca_data = {
@@ -120,7 +126,7 @@ async def test_export_certificate_private_key(client: AsyncClient):
         "subject_dn": "CN=Key Export Test CA,O=Test Organization,C=US",
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/cas/",
         json=ca_data,
     )
@@ -136,7 +142,7 @@ async def test_export_certificate_private_key(client: AsyncClient):
         "include_private_key": True,
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/certificates/?ca_id={ca_id}",
         json=cert_data,
     )
@@ -145,7 +151,7 @@ async def test_export_certificate_private_key(client: AsyncClient):
     cert_id = created_cert["id"]
 
     # Now test exporting the certificate private key
-    response = await client.get(
+    response = await superuser_client.get(
         f"{settings.API_V1_STR}/export/certificate/{cert_id}/private-key"
     )
 
@@ -160,7 +166,7 @@ async def test_export_certificate_private_key(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_export_certificate_chain(client: AsyncClient):
+async def test_export_certificate_chain(superuser_client: AsyncClient):
     """Test exporting a certificate with its complete certificate chain."""
     # First create a root CA
     root_ca_data = {
@@ -168,7 +174,7 @@ async def test_export_certificate_chain(client: AsyncClient):
         "subject_dn": "CN=Chain Root CA,O=Test Organization,C=US",
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/cas/",
         json=root_ca_data,
     )
@@ -184,7 +190,7 @@ async def test_export_certificate_chain(client: AsyncClient):
         "include_private_key": True,
     }
 
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/certificates/?ca_id={root_ca_id}",
         json=intermediate_ca_data,
     )
@@ -201,7 +207,7 @@ async def test_export_certificate_chain(client: AsyncClient):
     }
 
     # Create the server certificate signed by the intermediate CA
-    response = await client.post(
+    response = await superuser_client.post(
         f"{settings.API_V1_STR}/certificates/?ca_id={intermediate_id}",
         json=cert_data,
     )
@@ -210,7 +216,7 @@ async def test_export_certificate_chain(client: AsyncClient):
     cert_id = created_cert["id"]
 
     # Now test exporting the certificate chain
-    response = await client.get(
+    response = await superuser_client.get(
         f"{settings.API_V1_STR}/export/certificate/{cert_id}/chain"
     )
 
@@ -224,3 +230,24 @@ async def test_export_certificate_chain(client: AsyncClient):
     # Chain should contain both the certificate and the CA certificates
     assert response.text.count("-----BEGIN CERTIFICATE-----") >= 2
     assert response.text.count("-----END CERTIFICATE-----") >= 2
+
+
+@pytest.mark.asyncio
+async def test_unauthenticated_export_access(client: AsyncClient):
+    """Test that unauthenticated requests to export endpoints return 401."""
+    response = await client.get(f"{settings.API_V1_STR}/export/ca/1/certificate")
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    response = await client.get(f"{settings.API_V1_STR}/export/ca/1/private-key")
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    response = await client.get(f"{settings.API_V1_STR}/export/certificate/1")
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    response = await client.get(
+        f"{settings.API_V1_STR}/export/certificate/1/private-key"
+    )
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    response = await client.get(f"{settings.API_V1_STR}/export/certificate/1/chain")
+    assert response.status_code == status.HTTP_401_UNAUTHORIZED
