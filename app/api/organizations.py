@@ -17,6 +17,11 @@ from app.schemas.organization import (
     OrganizationUpdate,
 )
 from app.schemas.user import User as UserSchema
+from app.services.exceptions import (
+    AlreadyExistsError,
+    HasDependentsError,
+    NotFoundError,
+)
 from app.services.organization import OrganizationService
 from app.services.user import UserService
 
@@ -35,10 +40,16 @@ async def create_organization(
     Only admin or superuser users can create organizations.
     """
     organization_service = OrganizationService(db)
-    organization = await organization_service.create_organization(
-        name=organization_in.name,
-        description=organization_in.description,
-    )
+    try:
+        organization = await organization_service.create_organization(
+            name=organization_in.name,
+            description=organization_in.description,
+        )
+    except AlreadyExistsError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
     return organization
 
 
@@ -131,31 +142,35 @@ async def update_organization(
     """
     organization_service = OrganizationService(db)
 
-    # For superusers, allow updating any organization
-    if current_user.role == UserRole.SUPERUSER:
+    # For non-superusers, check admin access first
+    if current_user.role != UserRole.SUPERUSER:
+        has_admin_access = (
+            await organization_service.user_has_organization_admin_access(
+                current_user.id, organization_id
+            )
+        )
+        if not has_admin_access:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to update this organization",
+            )
+
+    try:
         organization = await organization_service.update_organization(
             org_id=organization_id,
             name=organization_in.name,
             description=organization_in.description,
         )
-        return organization
-
-    # For admin users, check if they have admin access to this specific organization
-    has_admin_access = await organization_service.user_has_organization_admin_access(
-        current_user.id, organization_id
-    )
-
-    if not has_admin_access:
+    except NotFoundError as e:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have permission to update this organization",
-        )
-
-    organization = await organization_service.update_organization(
-        org_id=organization_id,
-        name=organization_in.name,
-        description=organization_in.description,
-    )
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        ) from e
+    except AlreadyExistsError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
     return organization
 
 
@@ -172,13 +187,18 @@ async def delete_organization(
     Organizations with users cannot be deleted; users must be removed first.
     """
     organization_service = OrganizationService(db)
-    result = await organization_service.delete_organization(organization_id)
-
-    if not result:
+    try:
+        await organization_service.delete_organization(organization_id)
+    except NotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        ) from e
+    except HasDependentsError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete organization with users. Remove all users first.",
-        )
+            detail=str(e),
+        ) from e
 
     return None
 

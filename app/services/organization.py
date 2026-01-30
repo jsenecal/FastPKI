@@ -3,14 +3,26 @@ from typing import Optional
 from zoneinfo import ZoneInfo
 
 # mypy: disable-error-code="arg-type"
-from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import func
 
 from app.db.models import Organization, User, UserRole
+from app.services.exceptions import (
+    AlreadyExistsError,
+    HasDependentsError,
+    NotFoundError,
+    PermissionDeniedError,
+)
 
 UTC = ZoneInfo("UTC")
+
+_ORG_NOT_FOUND = "Organization not found"
+_ORG_EXISTS = "Organization with this name already exists"
+_USER_NOT_FOUND = "User not found"
+_NO_ADD_PERM = "You don't have permission to add users to this org"
+_NO_REMOVE_PERM = "You don't have permission to remove this user"
+_HAS_USERS = "Cannot delete organization with users. Remove all users first."
 
 
 class OrganizationService:
@@ -21,15 +33,10 @@ class OrganizationService:
         self, name: str, description: Optional[str] = None
     ) -> Organization:
         """Create a new organization."""
-        # Check if organization with this name already exists
         exists = await self.get_organization_by_name(name)
         if exists:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Organization with this name already exists",
-            )
+            raise AlreadyExistsError(_ORG_EXISTS)
 
-        # Create new organization
         org = Organization(
             name=name,
             description=description,
@@ -69,19 +76,12 @@ class OrganizationService:
         """Update an organization."""
         org = await self.get_organization_by_id(org_id)
         if not org:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Organization not found",
-            )
+            raise NotFoundError(_ORG_NOT_FOUND)
 
-        # Check for name uniqueness if name is being updated
         if name and name != org.name:
             exists = await self.get_organization_by_name(name)
             if exists:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Organization with this name already exists",
-                )
+                raise AlreadyExistsError(_ORG_EXISTS)
             org.name = name
 
         if description is not None:
@@ -97,18 +97,11 @@ class OrganizationService:
         """Delete an organization."""
         org = await self.get_organization_by_id(org_id)
         if not org:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Organization not found",
-            )
+            raise NotFoundError(_ORG_NOT_FOUND)
 
-        # Check if there are users in the organization
         users = await self.get_organization_users(org_id)
         if users:
-            # We could either fail, automatically remove users,
-            # or force the caller to handle it
-            # For now, we'll fail to avoid unexpected behavior
-            return False
+            raise HasDependentsError(_HAS_USERS)
 
         await self.db.delete(org)
         await self.db.commit()
@@ -118,37 +111,24 @@ class OrganizationService:
         self, user_id: int, org_id: int, admin_user_id: Optional[int] = None
     ) -> User:
         """Add a user to an organization."""
-        # Check if organization exists
         org = await self.get_organization_by_id(org_id)
         if not org:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Organization not found",
-            )
+            raise NotFoundError(_ORG_NOT_FOUND)
 
-        # Get the user
         query = select(User).where(User.id == user_id)
         result = await self.db.execute(query)
         user = result.scalar_one_or_none()
 
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found",
-            )
+            raise NotFoundError(_USER_NOT_FOUND)
 
-        # If an admin_user_id is provided, ensure they have the right to add users
         if admin_user_id:
             can_add = await self.user_can_add_user_to_organization(
                 admin_user_id, org_id, user_id
             )
             if not can_add:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You don't have permission to add users to this org",
-                )
+                raise PermissionDeniedError(_NO_ADD_PERM)
 
-        # Update the user's organization
         user.organization_id = org_id
         user.updated_at = datetime.now(UTC)
 
@@ -161,33 +141,23 @@ class OrganizationService:
         self, user_id: int, admin_user_id: Optional[int] = None
     ) -> User:
         """Remove a user from their organization."""
-        # Get the user
         query = select(User).where(User.id == user_id)
         result = await self.db.execute(query)
         user = result.scalar_one_or_none()
 
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found",
-            )
+            raise NotFoundError(_USER_NOT_FOUND)
 
         if user.organization_id is None:
-            # User is not in any organization, nothing to do
             return user
 
-        # If an admin_user_id is provided, ensure they have the right to remove users
         if admin_user_id:
             can_remove = await self.user_can_remove_user_from_organization(
                 admin_user_id, user_id
             )
             if not can_remove:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You don't have permission to remove this user",
-                )
+                raise PermissionDeniedError(_NO_REMOVE_PERM)
 
-        # Update the user's organization
         user.organization_id = None
         user.updated_at = datetime.now(UTC)
 
@@ -210,7 +180,6 @@ class OrganizationService:
 
     async def user_has_organization_access(self, user_id: int, org_id: int) -> bool:
         """Check if a user has access to an organization."""
-        # Get the user
         query = select(User).where(User.id == user_id)
         result = await self.db.execute(query)
         user = result.scalar_one_or_none()
@@ -218,11 +187,9 @@ class OrganizationService:
         if not user:
             return False
 
-        # Superusers have access to all organizations
         if user.role == UserRole.SUPERUSER:
             return True
 
-        # Users with the organization ID have access
         return user.organization_id == org_id
 
     async def user_has_organization_admin_access(
@@ -235,7 +202,6 @@ class OrganizationService:
         1. They are a superuser
         2. They are an admin and belong to the organization
         """
-        # Get the user
         query = select(User).where(User.id == user_id)
         result = await self.db.execute(query)
         user = result.scalar_one_or_none()
@@ -243,18 +209,15 @@ class OrganizationService:
         if not user:
             return False
 
-        # Superusers have admin access to all organizations
         if user.role == UserRole.SUPERUSER:
             return True
 
-        # Only admins have admin access, and they must be in the organization
         return user.role == UserRole.ADMIN and user.organization_id == org_id
 
     async def user_can_add_user_to_organization(
         self, admin_user_id: int, org_id: int, user_id: int
     ) -> bool:
         """Check if a user can add another user to an organization."""
-        # Get the admin user
         query = select(User).where(User.id == admin_user_id)
         result = await self.db.execute(query)
         admin_user = result.scalar_one_or_none()
@@ -262,11 +225,9 @@ class OrganizationService:
         if not admin_user:
             return False
 
-        # Superusers can add users to any organization
         if admin_user.role == UserRole.SUPERUSER:
             return True
 
-        # Organization admins can only add users to their organization
         return (
             admin_user.role == UserRole.ADMIN and admin_user.organization_id == org_id
         )
@@ -275,7 +236,6 @@ class OrganizationService:
         self, admin_user_id: int, user_id: int
     ) -> bool:
         """Check if a user can remove another user from an organization."""
-        # Get both users
         admin_query = select(User).where(User.id == admin_user_id)  # type: ignore
         user_query = select(User).where(User.id == user_id)  # type: ignore
 
@@ -288,11 +248,9 @@ class OrganizationService:
         if not admin_user or not user or user.organization_id is None:
             return False
 
-        # Superusers can remove any user from any organization
         if admin_user.role == UserRole.SUPERUSER:
             return True
 
-        # Organization admins can only remove users from their organization
         return (
             admin_user.role == UserRole.ADMIN
             and admin_user.organization_id == user.organization_id

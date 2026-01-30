@@ -1,6 +1,7 @@
 import pytest
 
 from app.db.models import UserRole
+from app.services.exceptions import HasDependentsError
 from app.services.organization import OrganizationService
 from app.services.user import UserService
 
@@ -137,16 +138,11 @@ async def test_cannot_delete_organization_with_users(db):
 
     await org_service.add_user_to_organization(user.id, org.id)
 
-    # Attempt to delete the organization should fail or notify
-    result = await org_service.delete_organization(org.id)
-
-    # The service should handle this case, either by:
-    # 1. Returning False to indicate failure
-    # 2. Raising an exception with appropriate message
-    # 3. Removing users from the organization first (if that's the behavior we want)
-
-    # For this test, we'll assume the service returns False if there are users
-    assert result is False
+    # Attempt to delete the organization should raise HasDependentsError
+    with pytest.raises(
+        HasDependentsError, match="Cannot delete organization with users"
+    ):
+        await org_service.delete_organization(org.id)
 
     # Verify the organization still exists
     org_check = await org_service.get_organization_by_id(org.id)

@@ -1,0 +1,18 @@
+class ServiceError(Exception):
+    """Base exception for service-layer errors."""
+
+
+class NotFoundError(ServiceError):
+    """Raised when a requested resource is not found."""
+
+
+class AlreadyExistsError(ServiceError):
+    """Raised when attempting to create a resource that already exists."""
+
+
+class PermissionDeniedError(ServiceError):
+    """Raised when the user lacks permission for an operation."""
+
+
+class HasDependentsError(ServiceError):
+    """Raised when a resource cannot be deleted because it has dependents."""
