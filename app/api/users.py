@@ -5,9 +5,10 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from app.api.deps import get_current_active_superuser, get_current_active_user, get_db
+from app.api.deps import get_current_active_superuser, get_current_active_user
 from app.core.config import logger, settings
 from app.db.models import User, UserRole
+from app.db.session import get_session
 from app.schemas.user import User as UserSchema
 from app.schemas.user import UserCreate, UserUpdate
 from app.services.user import UserService
@@ -23,7 +24,7 @@ router = APIRouter()
 @router.post("/", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
 async def create_user(
     user_in: UserCreate,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     token: Optional[str] = Depends(oauth2_scheme_optional),
 ) -> Any:
     logger.debug("Create user request for username: %s", user_in.username)
@@ -108,7 +109,7 @@ async def create_user(
 async def read_users(
     skip: int = 0,
     limit: int = 100,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_superuser),  # noqa: B008
 ) -> Any:
     """
@@ -132,7 +133,7 @@ async def read_user_me(
 @router.get("/{user_id}", response_model=UserSchema)
 async def read_user_by_id(
     user_id: int,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> Any:
     """
@@ -164,7 +165,7 @@ async def read_user_by_id(
 async def update_user(
     user_id: int,
     user_in: UserUpdate,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> Any:
     """
@@ -226,7 +227,7 @@ async def update_user(
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
     user_id: int,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_superuser),  # noqa: B008
 ) -> None:
     """

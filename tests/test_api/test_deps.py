@@ -6,25 +6,9 @@ from app.api.deps import (
     get_current_active_admin_user,
     get_current_active_superuser,
     get_current_active_user,
-    get_db,
 )
 from app.db.models import UserRole
 from app.services.user import UserService
-
-# Remove unused fixtures
-
-
-@pytest.mark.asyncio
-async def test_get_db():
-    """Test the get_db dependency."""
-    db_generator = get_db()
-    db = await anext(db_generator)
-    assert db is not None
-    # Clean up by closing the session
-    try:
-        await db_generator.aclose()
-    except Exception:
-        pass  # This is expected in a test environment
 
 
 @pytest.mark.asyncio

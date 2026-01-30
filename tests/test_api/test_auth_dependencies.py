@@ -5,12 +5,12 @@ from fastapi import HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import (
+from app.api.auth import login_for_access_token
+from app.api.deps import (
+    get_current_active_admin_user,
+    get_current_active_superuser,
     get_current_active_user,
-    get_current_admin_or_superuser,
-    get_current_superuser,
     get_current_user,
-    login_for_access_token,
 )
 from app.core.config import settings
 from app.db.models import User, UserRole
@@ -158,11 +158,11 @@ async def test_get_current_active_user_inactive(
 
 
 @pytest.mark.asyncio
-async def test_get_current_superuser_success(
+async def test_get_current_active_superuser_success(
     db: AsyncSession, auth_test_superuser: User
 ):
     """Test getting current superuser with a superuser."""
-    user = await get_current_superuser(current_user=auth_test_superuser)
+    user = await get_current_active_superuser(current_user=auth_test_superuser)
 
     assert user is not None
     assert user.id == auth_test_superuser.id
@@ -170,23 +170,23 @@ async def test_get_current_superuser_success(
 
 
 @pytest.mark.asyncio
-async def test_get_current_superuser_not_superuser(
+async def test_get_current_active_superuser_not_superuser(
     db: AsyncSession, auth_test_user: User
 ):
     """Test getting current superuser with a non-superuser."""
     with pytest.raises(HTTPException) as exc_info:
-        await get_current_superuser(current_user=auth_test_user)
+        await get_current_active_superuser(current_user=auth_test_user)
 
     assert exc_info.value.status_code == 403
-    assert "Not enough permissions" in exc_info.value.detail
+    assert "sufficient privileges" in exc_info.value.detail
 
 
 @pytest.mark.asyncio
-async def test_get_current_admin_or_superuser_admin(
+async def test_get_current_active_admin_user_admin(
     db: AsyncSession, auth_test_admin: User
 ):
     """Test getting current admin or superuser with an admin."""
-    user = await get_current_admin_or_superuser(current_user=auth_test_admin)
+    user = await get_current_active_admin_user(current_user=auth_test_admin)
 
     assert user is not None
     assert user.id == auth_test_admin.id
@@ -194,11 +194,11 @@ async def test_get_current_admin_or_superuser_admin(
 
 
 @pytest.mark.asyncio
-async def test_get_current_admin_or_superuser_superuser(
+async def test_get_current_active_admin_user_superuser(
     db: AsyncSession, auth_test_superuser: User
 ):
     """Test getting current admin or superuser with a superuser."""
-    user = await get_current_admin_or_superuser(current_user=auth_test_superuser)
+    user = await get_current_active_admin_user(current_user=auth_test_superuser)
 
     assert user is not None
     assert user.id == auth_test_superuser.id
@@ -206,12 +206,12 @@ async def test_get_current_admin_or_superuser_superuser(
 
 
 @pytest.mark.asyncio
-async def test_get_current_admin_or_superuser_not_admin(
+async def test_get_current_active_admin_user_not_admin(
     db: AsyncSession, auth_test_user: User
 ):
     """Test getting current admin or superuser with a regular user."""
     with pytest.raises(HTTPException) as exc_info:
-        await get_current_admin_or_superuser(current_user=auth_test_user)
+        await get_current_active_admin_user(current_user=auth_test_user)
 
     assert exc_info.value.status_code == 403
-    assert "Not enough permissions" in exc_info.value.detail
+    assert "sufficient privileges" in exc_info.value.detail

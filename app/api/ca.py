@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_active_admin_user, get_current_active_user, get_db
+from app.api.deps import get_current_active_admin_user, get_current_active_user
 from app.db.models import User
+from app.db.session import get_session
 from app.schemas.ca import CACreate, CADetailResponse, CAResponse
 from app.services.ca import CAService
 
@@ -12,7 +13,7 @@ router = APIRouter()
 @router.post("/", response_model=CADetailResponse, status_code=status.HTTP_201_CREATED)
 async def create_ca(
     ca_in: CACreate,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> CADetailResponse:
     """Create a new Certificate Authority."""
@@ -36,7 +37,7 @@ async def create_ca(
 
 @router.get("/", response_model=list[CAResponse])
 async def read_cas(
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> list[CAResponse]:
     """Get all Certificate Authorities."""
@@ -47,7 +48,7 @@ async def read_cas(
 @router.get("/{ca_id}", response_model=CAResponse)
 async def read_ca(
     ca_id: int,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> CAResponse:
     """Get a specific Certificate Authority by ID."""
@@ -63,7 +64,7 @@ async def read_ca(
 @router.get("/{ca_id}/private-key", response_model=CADetailResponse)
 async def read_ca_with_private_key(
     ca_id: int,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> CADetailResponse:
     """Get a specific Certificate Authority by ID, including private key."""
@@ -79,7 +80,7 @@ async def read_ca_with_private_key(
 @router.delete("/{ca_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_ca(
     ca_id: int,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> None:
     """Delete a Certificate Authority by ID."""

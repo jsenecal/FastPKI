@@ -7,9 +7,9 @@ from app.api.deps import (
     get_current_active_admin_user,
     get_current_active_superuser,
     get_current_active_user,
-    get_db,
 )
 from app.db.models import User, UserRole
+from app.db.session import get_session
 from app.schemas.organization import (
     Organization,
     OrganizationCreate,
@@ -24,7 +24,7 @@ router = APIRouter()
 @router.post("/", response_model=Organization, status_code=status.HTTP_201_CREATED)
 async def create_organization(
     *,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     organization_in: OrganizationCreate,
     current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> Organization:
@@ -43,7 +43,7 @@ async def create_organization(
 @router.get("/{organization_id}", response_model=Organization)
 async def read_organization(
     *,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     organization_id: int,
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> Organization:
@@ -89,7 +89,7 @@ async def read_organization(
 @router.get("/", response_model=list[Organization])
 async def read_organizations(
     *,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> list[Organization]:
     """
@@ -117,7 +117,7 @@ async def read_organizations(
 @router.put("/{organization_id}", response_model=Organization)
 async def update_organization(
     *,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     organization_id: int,
     organization_in: OrganizationUpdate,
     current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
@@ -160,7 +160,7 @@ async def update_organization(
 @router.delete("/{organization_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_organization(
     *,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     organization_id: int,
     current_user: User = Depends(get_current_active_superuser),  # noqa: B008
 ) -> None:
@@ -184,7 +184,7 @@ async def delete_organization(
 @router.post("/users", response_model=UserSchema)
 async def add_user_to_organization(
     *,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     organization_id: int,
     user_id: int,
     current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
@@ -253,7 +253,7 @@ async def add_user_to_organization(
 @router.post("/{organization_id}/users/{user_id}", response_model=UserSchema)
 async def add_user_to_organization_path(
     *,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     organization_id: int,
     user_id: int,
     current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
@@ -330,7 +330,7 @@ async def add_user_to_organization_path(
 @router.delete("/users", response_model=UserSchema)
 async def remove_user_from_organization(
     *,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     organization_id: int,
     user_id: int,
     current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
@@ -399,7 +399,7 @@ async def remove_user_from_organization(
 @router.delete("/{organization_id}/users/{user_id}", response_model=UserSchema)
 async def remove_user_from_organization_path(
     *,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     organization_id: int,
     user_id: int,
     current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
@@ -483,7 +483,7 @@ async def remove_user_from_organization_path(
 @router.get("/org-users", response_model=list[UserSchema])
 async def read_organization_users(
     *,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     organization_id: int,
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> list[UserSchema]:
@@ -541,7 +541,7 @@ async def read_organization_users(
 @router.get("/{organization_id}/users", response_model=list[UserSchema])
 async def read_organization_users_path(
     *,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     organization_id: int,
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> list[UserSchema]:

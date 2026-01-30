@@ -3,8 +3,9 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_active_admin_user, get_current_active_user, get_db
+from app.api.deps import get_current_active_admin_user, get_current_active_user
 from app.db.models import User
+from app.db.session import get_session
 from app.schemas.cert import (
     CertificateCreate,
     CertificateDetailResponse,
@@ -22,7 +23,7 @@ router = APIRouter()
 async def create_certificate(
     cert_in: CertificateCreate,
     ca_id: int,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> CertificateDetailResponse:
     """Create a new certificate signed by the specified CA."""
@@ -54,7 +55,7 @@ async def create_certificate(
 @router.get("/", response_model=list[CertificateResponse])
 async def read_certificates(
     ca_id: Optional[int] = Query(None, description="Filter by CA ID"),
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> list[CertificateResponse]:
     """Get all certificates, optionally filtered by CA ID."""
@@ -65,7 +66,7 @@ async def read_certificates(
 @router.get("/{cert_id}", response_model=CertificateResponse)
 async def read_certificate(
     cert_id: int,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> CertificateResponse:
     """Get a specific certificate by ID."""
@@ -81,7 +82,7 @@ async def read_certificate(
 @router.get("/{cert_id}/private-key", response_model=CertificateDetailResponse)
 async def read_certificate_with_private_key(
     cert_id: int,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> CertificateDetailResponse:
     """Get a specific certificate by ID, including private key if available."""
@@ -98,7 +99,7 @@ async def read_certificate_with_private_key(
 async def revoke_certificate(
     cert_id: int,
     revoke_data: CertificateRevoke,
-    db: AsyncSession = Depends(get_db),  # noqa: B008
+    db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> CertificateResponse:
     """Revoke a certificate by ID."""

@@ -18,7 +18,6 @@ from app.api.deps import (
     get_current_active_superuser,
     get_current_active_user,
     get_current_user,
-    get_db,
 )
 from app.core.config import logger, settings
 from app.db.models import User, UserRole
@@ -104,7 +103,6 @@ async def client(setup_db) -> AsyncGenerator[AsyncClient, None]:
 
     # Override the dependency
     app.dependency_overrides[get_session] = get_test_session
-    app.dependency_overrides[get_db] = get_test_session
 
     # Create test client using ASGITransport
     transport = ASGITransport(app=app)
@@ -233,7 +231,6 @@ def auth_override_app():
 
         # Override the dependency
         app.dependency_overrides[get_session] = get_test_session
-        app.dependency_overrides[get_db] = get_test_session
         app.dependency_overrides[get_current_user] = TestAuth(user)
         app.dependency_overrides[get_current_active_user] = TestAuth(user)
 
@@ -248,7 +245,6 @@ async def superuser_client(setup_db, superuser) -> AsyncGenerator[AsyncClient, N
     app = create_test_app()
 
     app.dependency_overrides[get_session] = get_test_session
-    app.dependency_overrides[get_db] = get_test_session
     app.dependency_overrides[get_current_user] = TestAuth(superuser)
     app.dependency_overrides[get_current_active_user] = TestAuth(superuser)
     app.dependency_overrides[get_current_active_superuser] = TestAuth(superuser)

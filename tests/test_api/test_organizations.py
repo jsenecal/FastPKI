@@ -18,7 +18,6 @@ from app.api.deps import (  # noqa: E402
     get_current_active_superuser,
     get_current_active_user,
     get_current_user,
-    get_db,
 )
 from app.core.config import settings  # noqa: E402
 from app.db.models import User, UserRole  # noqa: E402
@@ -449,7 +448,7 @@ async def test_add_user_to_organization(setup_test_db):
         )
 
         # Use the session in our app
-        async def override_get_db():
+        async def override_get_session():
             try:
                 yield session
             finally:
@@ -465,7 +464,7 @@ async def test_add_user_to_organization(setup_test_db):
         async def override_get_current_active_superuser():
             return superuser
 
-        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_session] = override_get_session
         app.dependency_overrides[get_current_user] = override_get_current_user
         app.dependency_overrides[
             get_current_active_user
@@ -538,7 +537,7 @@ async def test_remove_user_from_organization(setup_test_db):
         )
 
         # Use the session in our app
-        async def override_get_db():
+        async def override_get_session():
             try:
                 yield session
             finally:
@@ -554,7 +553,7 @@ async def test_remove_user_from_organization(setup_test_db):
         async def override_get_current_active_superuser():
             return superuser
 
-        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_session] = override_get_session
         app.dependency_overrides[get_current_user] = override_get_current_user
         app.dependency_overrides[
             get_current_active_user
@@ -630,7 +629,7 @@ async def test_get_organization_users(setup_test_db):
         )
 
         # Use the session in our app
-        async def override_get_db():
+        async def override_get_session():
             try:
                 yield session
             finally:
@@ -646,7 +645,7 @@ async def test_get_organization_users(setup_test_db):
         async def override_get_current_active_superuser():
             return superuser
 
-        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_session] = override_get_session
         app.dependency_overrides[get_current_user] = override_get_current_user
         app.dependency_overrides[
             get_current_active_user
@@ -744,7 +743,7 @@ async def test_user_access_own_organization(setup_test_db):
         )
 
         # Use the session in our app
-        async def override_get_db():
+        async def override_get_session():
             try:
                 yield session
             finally:
@@ -760,7 +759,7 @@ async def test_user_access_own_organization(setup_test_db):
         async def override_get_current_active_admin_user():
             return admin_user
 
-        app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_session] = override_get_session
         app.dependency_overrides[get_current_user] = override_get_current_user
         app.dependency_overrides[
             get_current_active_user
