@@ -3,6 +3,7 @@ from enum import Enum
 from typing import Optional
 from zoneinfo import ZoneInfo
 
+from sqlalchemy import Column, DateTime
 from sqlmodel import Field, Relationship, SQLModel
 
 UTC = ZoneInfo("UTC")
@@ -33,7 +34,13 @@ class Organization(SQLModel, table=True):
     name: str = Field(index=True, unique=True)
     description: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(
+        sa_column=Column(
+            DateTime,
+            default=lambda: datetime.now(UTC),
+            onupdate=lambda: datetime.now(UTC),
+        )
+    )
 
     users: list["User"] = Relationship(back_populates="organization")
 
@@ -51,7 +58,13 @@ class CertificateAuthority(CertificateAuthorityBase, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(
+        sa_column=Column(
+            DateTime,
+            default=lambda: datetime.now(UTC),
+            onupdate=lambda: datetime.now(UTC),
+        )
+    )
 
     private_key: str  # PEM encoded
     certificate: str  # PEM encoded
@@ -76,7 +89,13 @@ class Certificate(CertificateBase, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(
+        sa_column=Column(
+            DateTime,
+            default=lambda: datetime.now(UTC),
+            onupdate=lambda: datetime.now(UTC),
+        )
+    )
 
     private_key: Optional[str] = None  # PEM encoded
     certificate: str  # PEM encoded
@@ -114,7 +133,13 @@ class User(SQLModel, table=True):
     role: UserRole = Field(default=UserRole.USER)
     is_active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(
+        sa_column=Column(
+            DateTime,
+            default=lambda: datetime.now(UTC),
+            onupdate=lambda: datetime.now(UTC),
+        )
+    )
 
     organization_id: Optional[int] = Field(default=None, foreign_key="organizations.id")
     organization: Optional[Organization] = Relationship(back_populates="users")

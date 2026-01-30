@@ -94,8 +94,6 @@ class UserService:
         if organization_id is not None:
             user.organization_id = organization_id
 
-        user.updated_at = datetime.now(UTC)
-
         self.db.add(user)
         await self.db.commit()
         await self.db.refresh(user)

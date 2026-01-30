@@ -1,6 +1,4 @@
-from datetime import datetime
 from typing import Optional
-from zoneinfo import ZoneInfo
 
 # mypy: disable-error-code="arg-type"
 from sqlalchemy import select
@@ -14,8 +12,6 @@ from app.services.exceptions import (
     NotFoundError,
     PermissionDeniedError,
 )
-
-UTC = ZoneInfo("UTC")
 
 _ORG_NOT_FOUND = "Organization not found"
 _ORG_EXISTS = "Organization with this name already exists"
@@ -40,8 +36,6 @@ class OrganizationService:
         org = Organization(
             name=name,
             description=description,
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
         )
 
         self.db.add(org)
@@ -87,7 +81,6 @@ class OrganizationService:
         if description is not None:
             org.description = description
 
-        org.updated_at = datetime.now(UTC)
         self.db.add(org)
         await self.db.commit()
         await self.db.refresh(org)
@@ -130,7 +123,6 @@ class OrganizationService:
                 raise PermissionDeniedError(_NO_ADD_PERM)
 
         user.organization_id = org_id
-        user.updated_at = datetime.now(UTC)
 
         self.db.add(user)
         await self.db.commit()
@@ -159,7 +151,6 @@ class OrganizationService:
                 raise PermissionDeniedError(_NO_REMOVE_PERM)
 
         user.organization_id = None
-        user.updated_at = datetime.now(UTC)
 
         self.db.add(user)
         await self.db.commit()
