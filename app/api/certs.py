@@ -27,9 +27,9 @@ async def create_certificate(
     current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> CertificateDetailResponse:
     """Create a new certificate signed by the specified CA."""
+    cert_service = CertificateService(db)
     try:
-        cert = await CertificateService.create_certificate(
-            db=db,
+        cert = await cert_service.create_certificate(
             ca_id=ca_id,
             common_name=cert_in.common_name,
             subject_dn=cert_in.subject_dn,
@@ -59,7 +59,8 @@ async def read_certificates(
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> list[CertificateResponse]:
     """Get all certificates, optionally filtered by CA ID."""
-    certs = await CertificateService.list_certificates(db, ca_id=ca_id)
+    cert_service = CertificateService(db)
+    certs = await cert_service.list_certificates(ca_id=ca_id)
     return certs
 
 
@@ -70,7 +71,8 @@ async def read_certificate(
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> CertificateResponse:
     """Get a specific certificate by ID."""
-    cert = await CertificateService.get_certificate(db, cert_id)
+    cert_service = CertificateService(db)
+    cert = await cert_service.get_certificate(cert_id)
     if not cert:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -86,7 +88,8 @@ async def read_certificate_with_private_key(
     current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> CertificateDetailResponse:
     """Get a specific certificate by ID, including private key if available."""
-    cert = await CertificateService.get_certificate(db, cert_id)
+    cert_service = CertificateService(db)
+    cert = await cert_service.get_certificate(cert_id)
     if not cert:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -103,10 +106,9 @@ async def revoke_certificate(
     current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> CertificateResponse:
     """Revoke a certificate by ID."""
+    cert_service = CertificateService(db)
     try:
-        cert = await CertificateService.revoke_certificate(
-            db, cert_id, reason=revoke_data.reason
-        )
+        cert = await cert_service.revoke_certificate(cert_id, reason=revoke_data.reason)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

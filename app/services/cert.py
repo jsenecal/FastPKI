@@ -22,9 +22,11 @@ UTC = ZoneInfo("UTC")
 
 
 class CertificateService:
-    @staticmethod
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
     async def create_certificate(
-        db: AsyncSession,
+        self,
         ca_id: int,
         common_name: str,
         subject_dn: str,
@@ -38,7 +40,7 @@ class CertificateService:
         valid_days = valid_days or settings.CERT_DAYS
 
         # Get the CA
-        ca = await db.get(CertificateAuthority, ca_id)
+        ca = await self.db.get(CertificateAuthority, ca_id)
         if not ca:
             raise ValueError(f"No CA: {ca_id}")  # noqa: TRY003
 
@@ -156,37 +158,32 @@ class CertificateService:
             issuer_id=ca_id,
         )
 
-        db.add(cert)
-        await db.commit()
-        await db.refresh(cert)
+        self.db.add(cert)
+        await self.db.commit()
+        await self.db.refresh(cert)
 
         return cert
 
-    @staticmethod
-    async def get_certificate(db: AsyncSession, cert_id: int) -> Optional[Certificate]:
+    async def get_certificate(self, cert_id: int) -> Optional[Certificate]:
         """Get a certificate by ID."""
-        cert = await db.get(Certificate, cert_id)
+        cert = await self.db.get(Certificate, cert_id)
         return cert
 
-    @staticmethod
-    async def list_certificates(
-        db: AsyncSession, ca_id: Optional[int] = None
-    ) -> list[Certificate]:
+    async def list_certificates(self, ca_id: Optional[int] = None) -> list[Certificate]:
         """List certificates, optionally filtered by CA ID."""
         if ca_id:
             query = select(Certificate).where(Certificate.issuer_id == ca_id)
         else:
             query = select(Certificate)
 
-        result = await db.execute(query)
+        result = await self.db.execute(query)
         return list(result.scalars().all())
 
-    @staticmethod
     async def revoke_certificate(
-        db: AsyncSession, cert_id: int, reason: Optional[str] = None
+        self, cert_id: int, reason: Optional[str] = None
     ) -> Optional[Certificate]:
         """Revoke a certificate by ID."""
-        cert = await db.get(Certificate, cert_id)
+        cert = await self.db.get(Certificate, cert_id)
 
         if not cert:
             return None
@@ -209,8 +206,8 @@ class CertificateService:
             ca_id=cert.issuer_id,
         )
 
-        db.add(crl_entry)
-        await db.commit()
-        await db.refresh(cert)
+        self.db.add(crl_entry)
+        await self.db.commit()
+        await self.db.refresh(cert)
 
         return cert

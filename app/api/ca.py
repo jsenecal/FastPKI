@@ -17,9 +17,9 @@ async def create_ca(
     current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> CADetailResponse:
     """Create a new Certificate Authority."""
+    ca_service = CAService(db)
     try:
-        ca = await CAService.create_ca(
-            db=db,
+        ca = await ca_service.create_ca(
             name=ca_in.name,
             subject_dn=ca_in.subject_dn,
             description=ca_in.description,
@@ -41,7 +41,8 @@ async def read_cas(
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> list[CAResponse]:
     """Get all Certificate Authorities."""
-    cas = await CAService.list_cas(db)
+    ca_service = CAService(db)
+    cas = await ca_service.list_cas()
     return cas
 
 
@@ -52,7 +53,8 @@ async def read_ca(
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> CAResponse:
     """Get a specific Certificate Authority by ID."""
-    ca = await CAService.get_ca(db, ca_id)
+    ca_service = CAService(db)
+    ca = await ca_service.get_ca(ca_id)
     if not ca:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -68,7 +70,8 @@ async def read_ca_with_private_key(
     current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> CADetailResponse:
     """Get a specific Certificate Authority by ID, including private key."""
-    ca = await CAService.get_ca(db, ca_id)
+    ca_service = CAService(db)
+    ca = await ca_service.get_ca(ca_id)
     if not ca:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -84,7 +87,8 @@ async def delete_ca(
     current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
 ) -> None:
     """Delete a Certificate Authority by ID."""
-    success = await CAService.delete_ca(db, ca_id)
+    ca_service = CAService(db)
+    success = await ca_service.delete_ca(ca_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

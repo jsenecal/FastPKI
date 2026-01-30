@@ -17,6 +17,9 @@ UTC = ZoneInfo("UTC")
 
 
 class CAService:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
     @staticmethod
     def generate_key_pair(key_size: int = 2048) -> tuple[rsa.RSAPrivateKey, bytes]:
         """Generate RSA key pair with key object and PEM-encoded private key."""
@@ -66,9 +69,8 @@ class CAService:
 
         return x509.Name(name_attributes)
 
-    @staticmethod
     async def create_ca(
-        db: AsyncSession,
+        self,
         name: str,
         subject_dn: str,
         description: Optional[str] = None,
@@ -138,30 +140,27 @@ class CAService:
             certificate=certificate_pem.decode("utf-8"),
         )
 
-        db.add(ca)
-        await db.commit()
-        await db.refresh(ca)
+        self.db.add(ca)
+        await self.db.commit()
+        await self.db.refresh(ca)
 
         return ca
 
-    @staticmethod
-    async def get_ca(db: AsyncSession, ca_id: int) -> Optional[CertificateAuthority]:
+    async def get_ca(self, ca_id: int) -> Optional[CertificateAuthority]:
         """Get a Certificate Authority by ID."""
-        ca = await db.get(CertificateAuthority, ca_id)
+        ca = await self.db.get(CertificateAuthority, ca_id)
         return ca
 
-    @staticmethod
-    async def list_cas(db: AsyncSession) -> list[CertificateAuthority]:
+    async def list_cas(self) -> list[CertificateAuthority]:
         """List all Certificate Authorities."""
-        result = await db.execute(select(CertificateAuthority))
+        result = await self.db.execute(select(CertificateAuthority))
         return list(result.scalars().all())
 
-    @staticmethod
-    async def delete_ca(db: AsyncSession, ca_id: int) -> bool:
+    async def delete_ca(self, ca_id: int) -> bool:
         """Delete a Certificate Authority by ID."""
-        ca = await db.get(CertificateAuthority, ca_id)
+        ca = await self.db.get(CertificateAuthority, ca_id)
         if ca:
-            await db.delete(ca)
-            await db.commit()
+            await self.db.delete(ca)
+            await self.db.commit()
             return True
         return False

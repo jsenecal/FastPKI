@@ -19,7 +19,8 @@ async def export_ca_certificate(
     """
     Export a CA certificate in PEM format.
     """
-    ca = await CAService.get_ca(db, ca_id)
+    ca_service = CAService(db)
+    ca = await ca_service.get_ca(ca_id)
     if not ca:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -44,7 +45,8 @@ async def export_ca_private_key(
     """
     Export a CA private key in PEM format.
     """
-    ca = await CAService.get_ca(db, ca_id)
+    ca_service = CAService(db)
+    ca = await ca_service.get_ca(ca_id)
     if not ca:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -69,7 +71,8 @@ async def export_certificate(
     """
     Export a certificate in PEM format.
     """
-    cert = await CertificateService.get_certificate(db, cert_id)
+    cert_service = CertificateService(db)
+    cert = await cert_service.get_certificate(cert_id)
     if not cert:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -94,7 +97,8 @@ async def export_certificate_private_key(
     """
     Export a certificate's private key in PEM format.
     """
-    cert = await CertificateService.get_certificate(db, cert_id)
+    cert_service = CertificateService(db)
+    cert = await cert_service.get_certificate(cert_id)
     if not cert:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -127,7 +131,9 @@ async def export_certificate_chain(
     """
     Export a certificate with its complete certificate chain in PEM format.
     """
-    cert = await CertificateService.get_certificate(db, cert_id)
+    cert_service = CertificateService(db)
+    ca_service = CAService(db)
+    cert = await cert_service.get_certificate(cert_id)
     if not cert:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -141,12 +147,10 @@ async def export_certificate_chain(
     # Add issuer certificates
     current_issuer_id = cert.issuer_id
     while current_issuer_id is not None:
-        issuer = await CAService.get_ca(db, current_issuer_id)
+        issuer = await ca_service.get_ca(current_issuer_id)
         if not issuer:
             # If issuer is a certificate (not a CA)
-            issuer_cert = await CertificateService.get_certificate(
-                db, current_issuer_id
-            )
+            issuer_cert = await cert_service.get_certificate(current_issuer_id)
             if issuer_cert:
                 chain.append(issuer_cert.certificate)
                 current_issuer_id = issuer_cert.issuer_id

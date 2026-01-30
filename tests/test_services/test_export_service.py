@@ -12,8 +12,8 @@ from app.services.cert import CertificateService
 @pytest_asyncio.fixture
 async def export_test_ca(db: AsyncSession) -> CertificateAuthority:
     """Create a test CA for export tests."""
-    ca = await CAService.create_ca(
-        db=db,
+    ca_service = CAService(db)
+    ca = await ca_service.create_ca(
         name="Export Test CA",
         subject_dn="CN=Export Test CA,O=Test Organization,C=US",
         key_size=2048,
@@ -27,8 +27,8 @@ async def export_test_cert(
     db: AsyncSession, export_test_ca: CertificateAuthority
 ) -> Certificate:
     """Create a test certificate for export tests."""
-    cert = await CertificateService.create_certificate(
-        db=db,
+    cert_service = CertificateService(db)
+    cert = await cert_service.create_certificate(
         ca_id=export_test_ca.id,
         common_name="export.example.com",
         subject_dn="CN=export.example.com,O=Test Organization,C=US",
@@ -44,8 +44,8 @@ async def export_test_cert_without_key(
     db: AsyncSession, export_test_ca: CertificateAuthority
 ) -> Certificate:
     """Create a test certificate without private key for export tests."""
-    cert = await CertificateService.create_certificate(
-        db=db,
+    cert_service = CertificateService(db)
+    cert = await cert_service.create_certificate(
         ca_id=export_test_ca.id,
         common_name="export-no-key.example.com",
         subject_dn="CN=export-no-key.example.com,O=Test Organization,C=US",
