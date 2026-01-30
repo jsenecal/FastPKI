@@ -2,7 +2,7 @@
 
 This document outlines the planned features and implementation steps for FastPKI, following a Test-Driven Development approach.
 
-**Current status**: 114 tests passing, 73% coverage.
+**Current status**: 113 tests passing, 77% coverage.
 
 ## Authentication and Authorization System
 
@@ -33,9 +33,9 @@ Our goal is to create a comprehensive authentication and authorization system wi
   - [x] Add role enumeration (SUPERUSER, ADMIN, USER)
   - [x] Create organization management endpoints
   - [x] Fix organization API tests
-- [ ] Consolidate duplicate `get_current_user` implementations (`app/api/auth.py` still has its own copy alongside `app/api/deps.py`)
-- [ ] Consolidate duplicate `oauth2_scheme` definitions (pointing to different URLs in `auth.py` vs `deps.py`)
-- [ ] Use a single dependency injection pattern for database sessions (`get_session` vs `get_db` — `users.py` switched to `get_db`, but `auth.py` still uses `get_session`)
+- [x] Consolidate duplicate `get_current_user` implementations (single source of truth in `deps.py`)
+- [x] Consolidate duplicate `oauth2_scheme` definitions (single definition in `deps.py`)
+- [x] Use a single dependency injection pattern for database sessions (`get_session` used everywhere)
 
 ### 3. Permission System
 
@@ -91,18 +91,18 @@ Our goal is to create a comprehensive authentication and authorization system wi
 
 ## Code Quality / Refactoring
 
-- [ ] Eliminate massive duplication in `app/api/organizations.py` (query-param and path-param endpoint pairs are near-identical)
-- [ ] Choose one service design pattern: static methods with `db` param (`CAService`) vs instance-based with `db` in `__init__` (`UserService`)
-- [ ] Stop raising `HTTPException` in `OrganizationService`; raise domain exceptions and translate to HTTP in the API layer
-- [ ] Ensure `updated_at` is automatically managed on all models (currently only manually set in `UserService.update_user`)
-- [ ] Avoid generating a full RSA keypair when `include_private_key=False` in `CertificateService` (expensive no-op)
+- [x] Eliminate massive duplication in `app/api/organizations.py` (removed query-param endpoints, kept path-param only)
+- [x] Choose one service design pattern: all services use instance-based pattern with `db` in `__init__`
+- [x] Stop raising `HTTPException` in `OrganizationService`; domain exceptions in `app/services/exceptions.py`, translated to HTTP in API layer
+- [x] Ensure `updated_at` is automatically managed on all models (SQLAlchemy `onupdate` handles it)
+- [x] ~~Avoid generating a full RSA keypair when `include_private_key=False`~~ — Not a real issue: a keypair is required to embed the public key in the certificate; only the PEM storage is skipped
 
 ## Tech Debt
 
 - [x] Replace deprecated `@app.on_event("startup")` with FastAPI `lifespan` context manager
 - [x] Remove deprecated `default_backend()` calls from cryptography operations
 - [x] Replace deprecated `sessionmaker` usage with `async_sessionmaker`
-- [ ] Set up Alembic migration configuration (alembic is a dependency but unused; `create_all` won't handle schema changes)
+- [x] Set up Alembic migration configuration with async support and initial migration
 
 ## Implementation Notes
 
@@ -173,8 +173,7 @@ Each component of the auth system will be tested at multiple levels:
 
 ## Next Steps
 
-1. Consolidate remaining duplicate auth dependencies
-2. Design and implement the Permission model
-3. Add per-resource permission checks to endpoints
-4. Implement audit logging
-5. Encrypt private keys at rest
+1. Design and implement the Permission model
+2. Add per-resource permission checks to endpoints
+3. Implement audit logging
+4. Encrypt private keys at rest
