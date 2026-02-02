@@ -22,7 +22,7 @@ class Settings(BaseSettings):
 
     # Database settings
     DATABASE_URL: Optional[str] = "sqlite+aiosqlite:///./fastpki.db"
-    DATABASE_CONNECT_ARGS: dict[str, Any] = {}  # noqa: RUF012
+    DATABASE_CONNECT_ARGS: dict[str, Any] = {}
 
     @field_validator("DATABASE_URL")
     def validate_database_url(cls, v: Optional[str]) -> Any:  # noqa: N805
@@ -83,7 +83,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
 
     # CORS settings
-    BACKEND_CORS_ORIGINS: list[str] = ["*"]  # noqa: RUF012
+    BACKEND_CORS_ORIGINS: list[str] = ["*"]
 
 
 settings = Settings()

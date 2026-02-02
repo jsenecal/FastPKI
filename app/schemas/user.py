@@ -55,7 +55,7 @@ class UserInDBBase(UserBase):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {"from_attributes": True}  # noqa: RUF012
+    model_config = {"from_attributes": True}
 
 
 class User(UserInDBBase):

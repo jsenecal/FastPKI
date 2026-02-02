@@ -14,7 +14,7 @@ class OrganizationCreate(OrganizationBase):
     @classmethod
     def name_must_not_be_empty(cls, v: str) -> str:
         if not v or not v.strip():
-            raise ValueError("Organization name must not be empty")
+            raise ValueError("Organization name must not be empty")  # noqa: TRY003
         return v
 
 
@@ -26,7 +26,7 @@ class OrganizationUpdate(BaseModel):
     @classmethod
     def name_must_not_be_empty(cls, v: Optional[str]) -> Optional[str]:
         if v is not None and not v.strip():
-            raise ValueError("Organization name must not be empty")
+            raise ValueError("Organization name must not be empty")  # noqa: TRY003
         return v
 
 
