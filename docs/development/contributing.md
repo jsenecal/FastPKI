@@ -65,6 +65,9 @@ Strict mode is enabled with all `disallow_untyped_*` flags active. The SQLAlchem
 | `make docker-build` | Build Docker image |
 | `make docker-up` | Start Docker containers |
 | `make docker-down` | Stop Docker containers |
+| `make bump-patch` | Bump patch version (v0.1.0 → v0.1.1) |
+| `make bump-minor` | Bump minor version (v0.1.0 → v0.2.0) |
+| `make bump-major` | Bump major version (v0.1.0 → v1.0.0) |
 
 ## Pre-commit Hooks
 

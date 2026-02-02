@@ -128,8 +128,8 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 
 [tool.bumpver]
-current_version = "0.1.0"
-version_pattern = "MAJOR.MINOR.PATCH"
+current_version = "v0.1.0"
+version_pattern = "vMAJOR.MINOR.PATCH"
 commit_message = "release: Bump version {old_version} -> {new_version}"
 commit = true
 tag = true
@@ -137,5 +137,5 @@ push = false
 
 [tool.bumpver.file_patterns]
 "pyproject.toml" = [
-    'version = "{version}"',
+    'version = "{pep440_version}"',
 ]

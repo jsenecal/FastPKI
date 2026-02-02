@@ -6,6 +6,8 @@ FastPKI ships with Docker Compose configurations for both development and produc
 
 The image is based on `python:3.11-slim` and uses `uv` for dependency installation. It runs the application as a non-root `app` user.
 
+The Dockerfile accepts a `VERSION` build argument that sets the `org.opencontainers.image.version` OCI label for image introspection.
+
 ```
 docker/Dockerfile
 ```
@@ -56,6 +58,7 @@ Defines the `api` and `db` services. The `db` service (PostgreSQL 15) is placed 
 
 - Only mounts the `data/` directory
 - Sets `DATABASE_URL` to point at the `db` service
+- Adds `depends_on: db` so the API waits for PostgreSQL
 - Activates the PostgreSQL service by clearing its profile
 
 ## Environment Variables
@@ -85,11 +88,15 @@ See [Configuration](../reference/configuration.md) for the full list of variable
 docker-compose -f docker/docker-compose.yml build
 ```
 
-Or directly:
+Or directly with a version label:
 
 ```bash
-docker build -t fastpki -f docker/Dockerfile .
+docker build -f docker/Dockerfile --build-arg VERSION=v0.1.0 -t fastpki:v0.1.0 .
 ```
+
+## `.dockerignore`
+
+A `.dockerignore` file excludes `.git`, `.venv`, caches, and documentation from the build context. This keeps the context small (under 1 MB) and speeds up builds.
 
 ## Health Check
 

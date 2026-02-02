@@ -54,6 +54,7 @@ nav:
       - Production: deployment/production.md
   - Development:
       - Contributing: development/contributing.md
+      - Versioning: development/versioning.md
 
 markdown_extensions:
   - admonition
