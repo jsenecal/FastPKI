@@ -2,7 +2,7 @@
 
 This document outlines the planned features and implementation steps for FastPKI, following a Test-Driven Development approach.
 
-**Current status**: 208 tests passing, 90% coverage.
+**Current status**: 232 tests passing, 90% coverage.
 
 ## Authentication and Authorization System
 
@@ -64,13 +64,13 @@ Our goal is to create a comprehensive authentication and authorization system wi
 
 ### 5. Audit Logging System
 
-- [ ] Implement comprehensive audit logging
-  - [ ] Write tests for audit log creation
-  - [ ] Write tests for audit log retrieval and filtering
-  - [ ] Design audit log schema
-  - [ ] Implement AuditService
-  - [ ] Add audit logging to all security-sensitive operations
-  - [ ] Create audit log query endpoints
+- [x] Implement comprehensive audit logging
+  - [x] Write tests for audit log creation
+  - [x] Write tests for audit log retrieval and filtering
+  - [x] Design audit log schema
+  - [x] Implement AuditService
+  - [x] Add audit logging to all security-sensitive operations
+  - [x] Create audit log query endpoints
 
 ## Security Hardening
 
@@ -114,6 +114,7 @@ The authentication system uses:
 - Role-based access control for coarse-grained permissions (SUPERUSER, ADMIN, USER)
 - Per-user capability flags for fine-grained write permissions
 - Ownership tracking via `created_by_user_id` on CA and Certificate models
+- Immutable audit logging for all security-sensitive operations
 
 ### Model Structure
 
@@ -171,5 +172,4 @@ Each component of the auth system will be tested at multiple levels:
 
 ## Next Steps
 
-1. Implement audit logging system
-2. Encrypt private keys at rest
+1. Encrypt private keys at rest
