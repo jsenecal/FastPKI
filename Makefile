@@ -1,4 +1,4 @@
-.PHONY: install format lint test run clean docker-build docker-up docker-down
+.PHONY: install format lint test run clean docker-build docker-up docker-down docs docs-serve
 
 # Install dependencies
 install:
@@ -51,3 +51,10 @@ docker-up:
 
 docker-down:
 	docker-compose -f docker/docker-compose.yml down
+
+# Documentation
+docs:
+	mkdocs build --strict
+
+docs-serve:
+	mkdocs serve
