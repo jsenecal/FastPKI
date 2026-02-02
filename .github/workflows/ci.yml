@@ -26,16 +26,16 @@ jobs:
         run: pip install uv
 
       - name: Install dependencies
-        run: uv pip install --system -e ".[dev]"
+        run: uv sync --dev
 
       - name: Ruff check
-        run: ruff check app tests
+        run: uv run ruff check app tests
 
       - name: Ruff format check
-        run: ruff format --check app tests
+        run: uv run ruff format --check app tests
 
       - name: Mypy
-        run: mypy app
+        run: uv run mypy app
 
   test:
     runs-on: ubuntu-latest
@@ -53,10 +53,10 @@ jobs:
         run: pip install uv
 
       - name: Install dependencies
-        run: uv pip install --system -e ".[dev]"
+        run: uv sync --dev
 
       - name: Run tests
-        run: pytest --cov=app --cov-report=term-missing --cov-report=xml
+        run: uv run pytest --cov=app --cov-report=term-missing --cov-report=xml
         env:
           SECRET_KEY: test-secret-key-that-is-at-least-32-characters-long
 
