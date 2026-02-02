@@ -1,5 +1,9 @@
 # FastPKI
 
+[![CI](https://github.com/jsenecal/FastPKI/actions/workflows/ci.yml/badge.svg)](https://github.com/jsenecal/FastPKI/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/jsenecal/FastPKI/graph/badge.svg)](https://codecov.io/gh/jsenecal/FastPKI)
+[![Docs](https://github.com/jsenecal/FastPKI/actions/workflows/docs.yml/badge.svg)](https://jsenecal.github.io/fastpki/)
+
 FastPKI is an API-based PKI management system that provides an easier alternative to Easy-RSA. It allows you to create and manage Certificate Authorities, issue certificates, and revoke them through a RESTful API.
 
 ## Features
