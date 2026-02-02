@@ -24,6 +24,8 @@ class CAResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     certificate: str
+    organization_id: Optional[int] = None
+    created_by_user_id: Optional[int] = None
 
 
 class CADetailResponse(CAResponse):

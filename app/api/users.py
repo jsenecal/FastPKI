@@ -192,6 +192,26 @@ async def update_user(
             detail="Not enough permissions to change role or activation status",
         )
 
+    # Check capability field changes: require ADMIN in same org or SUPERUSER
+    capability_fields = [
+        user_in.can_create_ca,
+        user_in.can_create_cert,
+        user_in.can_revoke_cert,
+        user_in.can_export_private_key,
+        user_in.can_delete_ca,
+    ]
+    if any(f is not None for f in capability_fields):
+        same_org = (
+            is_admin
+            and current_user.organization_id is not None
+            and current_user.organization_id == user.organization_id
+        )
+        if not (is_superuser or same_org):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not enough permissions to change capabilities",
+            )
+
     # Regular users can only update their own profile
     if not (is_superuser or is_admin or is_self):
         raise HTTPException(
@@ -219,6 +239,11 @@ async def update_user(
         role=user_in.role,
         is_active=user_in.is_active,
         organization_id=user_in.organization_id,
+        can_create_ca=user_in.can_create_ca,
+        can_create_cert=user_in.can_create_cert,
+        can_revoke_cert=user_in.can_revoke_cert,
+        can_export_private_key=user_in.can_export_private_key,
+        can_delete_ca=user_in.can_delete_ca,
     )
 
     return updated_user

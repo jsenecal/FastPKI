@@ -34,6 +34,8 @@ class CertificateService:
         key_size: Optional[int] = None,
         valid_days: Optional[int] = None,
         include_private_key: bool = True,
+        organization_id: Optional[int] = None,
+        created_by_user_id: Optional[int] = None,
     ) -> Certificate:
         """Create a new certificate signed by the specified CA."""
         key_size = key_size or settings.CERT_KEY_SIZE
@@ -156,6 +158,8 @@ class CertificateService:
             not_before=not_before,
             not_after=not_after,
             issuer_id=ca_id,
+            organization_id=organization_id,
+            created_by_user_id=created_by_user_id,
         )
 
         self.db.add(cert)
@@ -169,13 +173,17 @@ class CertificateService:
         cert = await self.db.get(Certificate, cert_id)
         return cert
 
-    async def list_certificates(self, ca_id: Optional[int] = None) -> list[Certificate]:
-        """List certificates, optionally filtered by CA ID."""
+    async def list_certificates(
+        self,
+        ca_id: Optional[int] = None,
+        organization_id: Optional[int] = None,
+    ) -> list[Certificate]:
+        """List certificates, optionally filtered by CA ID and/or organization."""
+        query = select(Certificate)
         if ca_id:
-            query = select(Certificate).where(Certificate.issuer_id == ca_id)
-        else:
-            query = select(Certificate)
-
+            query = query.where(Certificate.issuer_id == ca_id)
+        if organization_id is not None:
+            query = query.where(Certificate.organization_id == organization_id)
         result = await self.db.execute(query)
         return list(result.scalars().all())
 

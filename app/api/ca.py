@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_active_admin_user, get_current_active_user
-from app.db.models import User
+from app.api.deps import get_current_active_user
+from app.db.models import PermissionAction, User, UserRole
 from app.db.session import get_session
 from app.schemas.ca import CACreate, CADetailResponse, CAResponse
 from app.services.ca import CAService
+from app.services.exceptions import NotFoundError, PermissionDeniedError
+from app.services.permission import PermissionService
 
 router = APIRouter()
 
@@ -14,9 +16,20 @@ router = APIRouter()
 async def create_ca(
     ca_in: CACreate,
     db: AsyncSession = Depends(get_session),  # noqa: B008
-    current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
+    current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> CADetailResponse:
     """Create a new Certificate Authority."""
+    perm = PermissionService(db)
+    if not perm._user_can_perform(
+        current_user,
+        current_user.organization_id,
+        None,
+        PermissionAction.CREATE_CA,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions",
+        )
     ca_service = CAService(db)
     try:
         ca = await ca_service.create_ca(
@@ -25,6 +38,8 @@ async def create_ca(
             description=ca_in.description,
             key_size=ca_in.key_size,
             valid_days=ca_in.valid_days,
+            organization_id=current_user.organization_id,
+            created_by_user_id=current_user.id,
         )
     except Exception as e:
         raise HTTPException(
@@ -42,7 +57,10 @@ async def read_cas(
 ) -> list[CAResponse]:
     """Get all Certificate Authorities."""
     ca_service = CAService(db)
-    cas = await ca_service.list_cas()
+    if current_user.role == UserRole.SUPERUSER:
+        cas = await ca_service.list_cas()
+    else:
+        cas = await ca_service.list_cas(organization_id=current_user.organization_id)
     return cas
 
 
@@ -53,13 +71,13 @@ async def read_ca(
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> CAResponse:
     """Get a specific Certificate Authority by ID."""
-    ca_service = CAService(db)
-    ca = await ca_service.get_ca(ca_id)
-    if not ca:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Certificate Authority with ID {ca_id} not found",
-        )
+    perm = PermissionService(db)
+    try:
+        ca = await perm.check_ca_access(current_user, ca_id, PermissionAction.READ)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
     return ca
 
 
@@ -67,16 +85,18 @@ async def read_ca(
 async def read_ca_with_private_key(
     ca_id: int,
     db: AsyncSession = Depends(get_session),  # noqa: B008
-    current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
+    current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> CADetailResponse:
     """Get a specific Certificate Authority by ID, including private key."""
-    ca_service = CAService(db)
-    ca = await ca_service.get_ca(ca_id)
-    if not ca:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Certificate Authority with ID {ca_id} not found",
+    perm = PermissionService(db)
+    try:
+        ca = await perm.check_ca_access(
+            current_user, ca_id, PermissionAction.EXPORT_PRIVATE_KEY
         )
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
     return ca
 
 
@@ -84,13 +104,15 @@ async def read_ca_with_private_key(
 async def delete_ca(
     ca_id: int,
     db: AsyncSession = Depends(get_session),  # noqa: B008
-    current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
+    current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> None:
     """Delete a Certificate Authority by ID."""
+    perm = PermissionService(db)
+    try:
+        await perm.check_ca_access(current_user, ca_id, PermissionAction.DELETE_CA)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
     ca_service = CAService(db)
-    success = await ca_service.delete_ca(ca_id)
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Certificate Authority with ID {ca_id} not found",
-        )
+    await ca_service.delete_ca(ca_id)

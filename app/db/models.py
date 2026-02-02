@@ -15,6 +15,15 @@ class UserRole(str, Enum):
     USER = "user"
 
 
+class PermissionAction(str, Enum):
+    READ = "read"
+    CREATE_CA = "create_ca"
+    CREATE_CERT = "create_cert"
+    REVOKE_CERT = "revoke_cert"
+    EXPORT_PRIVATE_KEY = "export_private_key"
+    DELETE_CA = "delete_ca"
+
+
 class CertificateStatus(str, Enum):
     VALID = "valid"
     REVOKED = "revoked"
@@ -69,6 +78,9 @@ class CertificateAuthority(CertificateAuthorityBase, table=True):
     private_key: str  # PEM encoded
     certificate: str  # PEM encoded
 
+    organization_id: Optional[int] = Field(default=None, foreign_key="organizations.id")
+    created_by_user_id: Optional[int] = Field(default=None, foreign_key="users.id")
+
     certificates: list["Certificate"] = Relationship(
         back_populates="issuer",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},
@@ -109,6 +121,9 @@ class Certificate(CertificateBase, table=True):
     )
     issuer: Optional[CertificateAuthority] = Relationship(back_populates="certificates")
 
+    organization_id: Optional[int] = Field(default=None, foreign_key="organizations.id")
+    created_by_user_id: Optional[int] = Field(default=None, foreign_key="users.id")
+
 
 class CRLEntry(SQLModel, table=True):
     __tablename__ = "crl_entries"
@@ -140,6 +155,12 @@ class User(SQLModel, table=True):
             onupdate=lambda: datetime.now(UTC),
         )
     )
+
+    can_create_ca: bool = Field(default=False)
+    can_create_cert: bool = Field(default=False)
+    can_revoke_cert: bool = Field(default=False)
+    can_export_private_key: bool = Field(default=False)
+    can_delete_ca: bool = Field(default=False)
 
     organization_id: Optional[int] = Field(default=None, foreign_key="organizations.id")
     organization: Optional[Organization] = Relationship(back_populates="users")

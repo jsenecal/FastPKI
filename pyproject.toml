@@ -113,6 +113,9 @@ disable_error_code = ["return-value"]
 module = "app.db.*"
 disable_error_code = ["call-overload"]
 
+[tool.coverage.run]
+concurrency = ["greenlet", "thread"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"

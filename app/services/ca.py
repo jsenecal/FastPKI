@@ -76,6 +76,8 @@ class CAService:
         description: Optional[str] = None,
         key_size: Optional[int] = None,
         valid_days: Optional[int] = None,
+        organization_id: Optional[int] = None,
+        created_by_user_id: Optional[int] = None,
     ) -> CertificateAuthority:
         """Create a new Certificate Authority."""
         key_size = key_size or settings.CA_KEY_SIZE
@@ -138,6 +140,8 @@ class CAService:
             valid_days=valid_days,
             private_key=private_key_pem.decode("utf-8"),
             certificate=certificate_pem.decode("utf-8"),
+            organization_id=organization_id,
+            created_by_user_id=created_by_user_id,
         )
 
         self.db.add(ca)
@@ -151,9 +155,14 @@ class CAService:
         ca = await self.db.get(CertificateAuthority, ca_id)
         return ca
 
-    async def list_cas(self) -> list[CertificateAuthority]:
-        """List all Certificate Authorities."""
-        result = await self.db.execute(select(CertificateAuthority))
+    async def list_cas(
+        self, organization_id: Optional[int] = None
+    ) -> list[CertificateAuthority]:
+        """List Certificate Authorities, optionally filtered by organization."""
+        query = select(CertificateAuthority)
+        if organization_id is not None:
+            query = query.where(CertificateAuthority.organization_id == organization_id)
+        result = await self.db.execute(query)
         return list(result.scalars().all())
 
     async def delete_ca(self, ca_id: int) -> bool:

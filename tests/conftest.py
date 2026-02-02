@@ -22,6 +22,7 @@ from app.api.deps import (
 from app.core.config import logger, settings
 from app.db.models import User, UserRole
 from app.db.session import get_session
+from app.services.organization import OrganizationService
 from app.services.user import UserService
 
 # Set logger to DEBUG for tests
@@ -110,6 +111,16 @@ async def client(setup_db) -> AsyncGenerator[AsyncClient, None]:
         yield client
 
 
+# Organization fixture for testing
+@pytest_asyncio.fixture
+async def test_org(db) -> "Organization":  # noqa: F821
+    """Create and return a test organization."""
+    org_service = OrganizationService(db)
+    return await org_service.create_organization(
+        name="TestOrganization", description="Test org for fixtures"
+    )
+
+
 # User fixtures for testing
 @pytest_asyncio.fixture
 async def superuser(db) -> User:
@@ -127,8 +138,8 @@ async def superuser(db) -> User:
 
 
 @pytest_asyncio.fixture
-async def admin_user(db) -> User:
-    """Create and return an admin user for testing."""
+async def admin_user(db, test_org) -> User:
+    """Create and return an admin user in the test org."""
     user_service = UserService(db)
     user = await user_service.get_user_by_username("testadmin")
     if not user:
@@ -137,13 +148,14 @@ async def admin_user(db) -> User:
             email="admin@example.com",
             password="password123",
             role=UserRole.ADMIN,
+            organization_id=test_org.id,
         )
     return user
 
 
 @pytest_asyncio.fixture
-async def normal_user(db) -> User:
-    """Create and return a normal user for testing."""
+async def normal_user(db, test_org) -> User:
+    """Create and return a normal user in the test org."""
     user_service = UserService(db)
     user = await user_service.get_user_by_username("testuser")
     if not user:
@@ -152,6 +164,7 @@ async def normal_user(db) -> User:
             email="user@example.com",
             password="password123",
             role=UserRole.USER,
+            organization_id=test_org.id,
         )
     return user
 
@@ -239,17 +252,41 @@ def auth_override_app():
     return _auth_override_app
 
 
+def _make_client_app(user: User) -> FastAPI:
+    """Create a test app with all auth dependencies overridden for a user."""
+    app = create_test_app()
+    app.dependency_overrides[get_session] = get_test_session
+    app.dependency_overrides[get_current_user] = TestAuth(user)
+    app.dependency_overrides[get_current_active_user] = TestAuth(user)
+    app.dependency_overrides[get_current_active_superuser] = TestAuth(user)
+    app.dependency_overrides[get_current_active_admin_user] = TestAuth(user)
+    return app
+
+
 @pytest_asyncio.fixture
 async def superuser_client(setup_db, superuser) -> AsyncGenerator[AsyncClient, None]:
     """Client with superuser authentication overrides for all auth dependencies."""
-    app = create_test_app()
+    app = _make_client_app(superuser)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        yield c
 
-    app.dependency_overrides[get_session] = get_test_session
-    app.dependency_overrides[get_current_user] = TestAuth(superuser)
-    app.dependency_overrides[get_current_active_user] = TestAuth(superuser)
-    app.dependency_overrides[get_current_active_superuser] = TestAuth(superuser)
-    app.dependency_overrides[get_current_active_admin_user] = TestAuth(superuser)
 
+@pytest_asyncio.fixture
+async def admin_client(setup_db, admin_user) -> AsyncGenerator[AsyncClient, None]:
+    """Client with admin user authentication overrides."""
+    app = _make_client_app(admin_user)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        yield c
+
+
+@pytest_asyncio.fixture
+async def normal_user_client(
+    setup_db, normal_user
+) -> AsyncGenerator[AsyncClient, None]:
+    """Client with normal user authentication overrides."""
+    app = _make_client_app(normal_user)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         yield c

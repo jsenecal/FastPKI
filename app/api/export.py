@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_active_admin_user, get_current_active_user
-from app.db.models import User
+from app.api.deps import get_current_active_user
+from app.db.models import PermissionAction, User
 from app.db.session import get_session
 from app.services.ca import CAService
 from app.services.cert import CertificateService
+from app.services.exceptions import NotFoundError, PermissionDeniedError
+from app.services.permission import PermissionService
 
 router = APIRouter()
 
@@ -16,22 +18,20 @@ async def export_ca_certificate(
     db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> Response:
-    """
-    Export a CA certificate in PEM format.
-    """
-    ca_service = CAService(db)
-    ca = await ca_service.get_ca(ca_id)
-    if not ca:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Certificate Authority with ID {ca_id} not found",
-        )
+    """Export a CA certificate in PEM format."""
+    perm = PermissionService(db)
+    try:
+        ca = await perm.check_ca_access(current_user, ca_id, PermissionAction.READ)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
 
     return Response(
         content=ca.certificate,
         media_type="application/x-pem-file",
         headers={
-            "Content-Disposition": f"attachment; filename=ca_{ca_id}_certificate.pem"
+            "Content-Disposition": (f"attachment; filename=ca_{ca_id}_certificate.pem")
         },
     )
 
@@ -40,24 +40,24 @@ async def export_ca_certificate(
 async def export_ca_private_key(
     ca_id: int,
     db: AsyncSession = Depends(get_session),  # noqa: B008
-    current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
+    current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> Response:
-    """
-    Export a CA private key in PEM format.
-    """
-    ca_service = CAService(db)
-    ca = await ca_service.get_ca(ca_id)
-    if not ca:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Certificate Authority with ID {ca_id} not found",
+    """Export a CA private key in PEM format."""
+    perm = PermissionService(db)
+    try:
+        ca = await perm.check_ca_access(
+            current_user, ca_id, PermissionAction.EXPORT_PRIVATE_KEY
         )
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
 
     return Response(
         content=ca.private_key,
         media_type="application/x-pem-file",
         headers={
-            "Content-Disposition": f"attachment; filename=ca_{ca_id}_private_key.pem"
+            "Content-Disposition": (f"attachment; filename=ca_{ca_id}_private_key.pem")
         },
     )
 
@@ -68,22 +68,22 @@ async def export_certificate(
     db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> Response:
-    """
-    Export a certificate in PEM format.
-    """
-    cert_service = CertificateService(db)
-    cert = await cert_service.get_certificate(cert_id)
-    if not cert:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Certificate with ID {cert_id} not found",
+    """Export a certificate in PEM format."""
+    perm = PermissionService(db)
+    try:
+        cert = await perm.check_cert_access(
+            current_user, cert_id, PermissionAction.READ
         )
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
 
     return Response(
         content=cert.certificate,
         media_type="application/x-pem-file",
         headers={
-            "Content-Disposition": f"attachment; filename=certificate_{cert_id}.pem"
+            "Content-Disposition": (f"attachment; filename=certificate_{cert_id}.pem")
         },
     )
 
@@ -92,18 +92,18 @@ async def export_certificate(
 async def export_certificate_private_key(
     cert_id: int,
     db: AsyncSession = Depends(get_session),  # noqa: B008
-    current_user: User = Depends(get_current_active_admin_user),  # noqa: B008
+    current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> Response:
-    """
-    Export a certificate's private key in PEM format.
-    """
-    cert_service = CertificateService(db)
-    cert = await cert_service.get_certificate(cert_id)
-    if not cert:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Certificate with ID {cert_id} not found",
+    """Export a certificate's private key in PEM format."""
+    perm = PermissionService(db)
+    try:
+        cert = await perm.check_cert_access(
+            current_user, cert_id, PermissionAction.EXPORT_PRIVATE_KEY
         )
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
 
     if not cert.private_key:
         raise HTTPException(
@@ -128,17 +128,19 @@ async def export_certificate_chain(
     db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> Response:
-    """
-    Export a certificate with its complete certificate chain in PEM format.
-    """
+    """Export a certificate with its complete certificate chain in PEM format."""
+    perm = PermissionService(db)
+    try:
+        cert = await perm.check_cert_access(
+            current_user, cert_id, PermissionAction.READ
+        )
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
+
     cert_service = CertificateService(db)
     ca_service = CAService(db)
-    cert = await cert_service.get_certificate(cert_id)
-    if not cert:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Certificate with ID {cert_id} not found",
-        )
 
     # Get the certificate chain
     chain = []
@@ -149,7 +151,6 @@ async def export_certificate_chain(
     while current_issuer_id is not None:
         issuer = await ca_service.get_ca(current_issuer_id)
         if not issuer:
-            # If issuer is a certificate (not a CA)
             issuer_cert = await cert_service.get_certificate(current_issuer_id)
             if issuer_cert:
                 chain.append(issuer_cert.certificate)
@@ -157,12 +158,9 @@ async def export_certificate_chain(
             else:
                 break
         else:
-            # If issuer is a CA
             chain.append(issuer.certificate)
-            # CA doesn't have an issuer field, so we're done
             break
 
-    # Join the chain
     chain_pem = "\n".join(chain)
 
     return Response(

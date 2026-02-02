@@ -1,6 +1,41 @@
 import pytest
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import UserRole
+from app.api.deps import (
+    get_current_active_admin_user,
+    get_current_active_superuser,
+    get_current_active_user,
+    get_current_user,
+)
+from app.core.config import settings
+from app.db.models import User, UserRole
+from app.db.session import get_session
+from app.services.user import UserService
+from tests.conftest import TestAuth, create_test_app, get_test_session
+
+
+def _app_for(user: User):
+    app = create_test_app()
+    app.dependency_overrides[get_session] = get_test_session
+    app.dependency_overrides[get_current_user] = TestAuth(user)
+    app.dependency_overrides[get_current_active_user] = TestAuth(user)
+    app.dependency_overrides[get_current_active_superuser] = TestAuth(user)
+    app.dependency_overrides[get_current_active_admin_user] = TestAuth(user)
+    return app
+
+
+@pytest_asyncio.fixture
+async def target_user(db: AsyncSession, test_org):
+    user_service = UserService(db)
+    return await user_service.create_user(
+        username="usertarget",
+        email="usertarget@example.com",
+        password="password123",
+        role=UserRole.USER,
+        organization_id=test_org.id,
+    )
 
 
 @pytest.mark.asyncio
@@ -309,3 +344,91 @@ async def test_regular_user_cannot_access_other_users(client, db):
 
     # Should be forbidden
     assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_get_nonexistent_user_returns_404(setup_db, superuser):
+    app = _app_for(superuser)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        resp = await c.get(f"{settings.API_V1_STR}/users/99999")
+        assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_nonexistent_user_returns_404(setup_db, superuser):
+    app = _app_for(superuser)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        resp = await c.patch(
+            f"{settings.API_V1_STR}/users/99999",
+            json={"email": "nope@example.com"},
+        )
+        assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_non_superuser_cannot_change_role(setup_db, admin_user, target_user):
+    app = _app_for(admin_user)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        resp = await c.patch(
+            f"{settings.API_V1_STR}/users/{target_user.id}",
+            json={"role": UserRole.ADMIN.value},
+        )
+        assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_non_superuser_cannot_change_is_active(setup_db, admin_user, target_user):
+    app = _app_for(admin_user)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        resp = await c.patch(
+            f"{settings.API_V1_STR}/users/{target_user.id}",
+            json={"is_active": False},
+        )
+        assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_regular_user_can_update_own_email(setup_db, normal_user):
+    app = _app_for(normal_user)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        resp = await c.patch(
+            f"{settings.API_V1_STR}/users/{normal_user.id}",
+            json={"email": "newemail@example.com"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["email"] == "newemail@example.com"
+
+
+@pytest.mark.asyncio
+async def test_superuser_cannot_downgrade_self(setup_db, superuser):
+    app = _app_for(superuser)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        resp = await c.patch(
+            f"{settings.API_V1_STR}/users/{superuser.id}",
+            json={"role": UserRole.USER.value},
+        )
+        assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_delete_nonexistent_user_returns_404(setup_db, superuser):
+    app = _app_for(superuser)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        resp = await c.delete(f"{settings.API_V1_STR}/users/99999")
+        assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_superuser_cannot_delete_self(setup_db, superuser):
+    app = _app_for(superuser)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        resp = await c.delete(f"{settings.API_V1_STR}/users/{superuser.id}")
+        assert resp.status_code == 400

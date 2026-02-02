@@ -33,6 +33,8 @@ class CertificateResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     issuer_id: int
+    organization_id: Optional[int] = None
+    created_by_user_id: Optional[int] = None
 
 
 class CertificateDetailResponse(CertificateResponse):

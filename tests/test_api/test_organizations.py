@@ -1,4 +1,3 @@
-import sys
 from pathlib import Path
 
 import pytest
@@ -9,19 +8,16 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import NullPool
 from sqlmodel import SQLModel
 
-# Add the root directory to the Python path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
-
-from app.api import api_router  # noqa: E402
-from app.api.deps import (  # noqa: E402
+from app.api import api_router
+from app.api.deps import (
     get_current_active_admin_user,
     get_current_active_superuser,
     get_current_active_user,
     get_current_user,
 )
-from app.core.config import settings  # noqa: E402
-from app.db.models import User, UserRole  # noqa: E402
-from app.db.session import get_session  # noqa: E402
+from app.core.config import settings
+from app.db.models import User, UserRole
+from app.db.session import get_session
 
 # Test database for this specific test
 TEST_DATABASE_URL = "sqlite+aiosqlite:///./test_organizations.db"

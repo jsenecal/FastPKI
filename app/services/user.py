@@ -46,6 +46,11 @@ class UserService:
         password: str,
         role: UserRole = UserRole.USER,
         organization_id: Optional[int] = None,
+        can_create_ca: bool = False,
+        can_create_cert: bool = False,
+        can_revoke_cert: bool = False,
+        can_export_private_key: bool = False,
+        can_delete_ca: bool = False,
     ) -> User:
         logger.debug("Creating user: %s, role: %s", username, role)
         hashed_password = get_password_hash(password)
@@ -56,6 +61,11 @@ class UserService:
             hashed_password=hashed_password,
             role=role,
             organization_id=organization_id,
+            can_create_ca=can_create_ca,
+            can_create_cert=can_create_cert,
+            can_revoke_cert=can_revoke_cert,
+            can_export_private_key=can_export_private_key,
+            can_delete_ca=can_delete_ca,
         )
 
         self.db.add(user)
@@ -73,6 +83,11 @@ class UserService:
         role: Optional[UserRole] = None,
         is_active: Optional[bool] = None,
         organization_id: Optional[int] = None,
+        can_create_ca: Optional[bool] = None,
+        can_create_cert: Optional[bool] = None,
+        can_revoke_cert: Optional[bool] = None,
+        can_export_private_key: Optional[bool] = None,
+        can_delete_ca: Optional[bool] = None,
     ) -> Optional[User]:
         user = await self.get_user_by_id(user_id)
 
@@ -93,6 +108,21 @@ class UserService:
 
         if organization_id is not None:
             user.organization_id = organization_id
+
+        if can_create_ca is not None:
+            user.can_create_ca = can_create_ca
+
+        if can_create_cert is not None:
+            user.can_create_cert = can_create_cert
+
+        if can_revoke_cert is not None:
+            user.can_revoke_cert = can_revoke_cert
+
+        if can_export_private_key is not None:
+            user.can_export_private_key = can_export_private_key
+
+        if can_delete_ca is not None:
+            user.can_delete_ca = can_delete_ca
 
         self.db.add(user)
         await self.db.commit()
