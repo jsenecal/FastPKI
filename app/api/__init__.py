@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api import auth, ca, certs, export, organizations, users
+from app.api import audit, auth, ca, certs, export, organizations, users
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["authentication"])
@@ -11,3 +11,4 @@ api_router.include_router(
 api_router.include_router(ca.router, prefix="/cas", tags=["certificate-authorities"])
 api_router.include_router(certs.router, prefix="/certificates", tags=["certificates"])
 api_router.include_router(export.router, prefix="/export", tags=["export"])
+api_router.include_router(audit.router, prefix="/audit-logs", tags=["audit-logs"])

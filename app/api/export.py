@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
-from app.db.models import PermissionAction, User
+from app.db.models import AuditAction, PermissionAction, User
 from app.db.session import get_session
+from app.services.audit import AuditService
 from app.services.ca import CAService
 from app.services.cert import CertificateService
 from app.services.exceptions import NotFoundError, PermissionDeniedError
@@ -52,6 +53,16 @@ async def export_ca_private_key(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except PermissionDeniedError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
+
+    audit_service = AuditService(db)
+    await audit_service.log_action(
+        action=AuditAction.CA_EXPORT_PRIVATE_KEY,
+        user_id=current_user.id,
+        username=current_user.username,
+        organization_id=current_user.organization_id,
+        resource_type="ca",
+        resource_id=ca_id,
+    )
 
     return Response(
         content=ca.private_key,
@@ -110,6 +121,16 @@ async def export_certificate_private_key(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Certificate with ID {cert_id} does not have a private key",
         )
+
+    audit_service = AuditService(db)
+    await audit_service.log_action(
+        action=AuditAction.CERT_EXPORT_PRIVATE_KEY,
+        user_id=current_user.id,
+        username=current_user.username,
+        organization_id=current_user.organization_id,
+        resource_type="certificate",
+        resource_id=cert_id,
+    )
 
     return Response(
         content=cert.private_key,

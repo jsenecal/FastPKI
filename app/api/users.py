@@ -7,10 +7,11 @@ from sqlmodel import select
 
 from app.api.deps import get_current_active_superuser, get_current_active_user
 from app.core.config import logger, settings
-from app.db.models import User, UserRole
+from app.db.models import AuditAction, User, UserRole
 from app.db.session import get_session
 from app.schemas.user import User as UserSchema
 from app.schemas.user import UserCreate, UserUpdate
+from app.services.audit import AuditService
 from app.services.user import UserService
 
 # Optional OAuth2 scheme for endpoints that need to work with or without auth
@@ -94,6 +95,17 @@ async def create_user(
         password=user_in.password,
         role=user_in.role,
         organization_id=user_in.organization_id,
+    )
+
+    audit_service = AuditService(db)
+    await audit_service.log_action(
+        action=AuditAction.USER_CREATE,
+        user_id=current_user.id if current_user else None,
+        username=current_user.username if current_user else None,
+        organization_id=user.organization_id,
+        resource_type="user",
+        resource_id=user.id,
+        detail=f"Created user '{user.username}'",
     )
 
     logger.info(
@@ -244,6 +256,17 @@ async def update_user(
         can_revoke_cert=user_in.can_revoke_cert,
         can_export_private_key=user_in.can_export_private_key,
         can_delete_ca=user_in.can_delete_ca,
+    )
+
+    audit_service = AuditService(db)
+    await audit_service.log_action(
+        action=AuditAction.USER_UPDATE,
+        user_id=current_user.id,
+        username=current_user.username,
+        organization_id=current_user.organization_id,
+        resource_type="user",
+        resource_id=user_id,
+        detail=f"Updated user '{user.username}'",
     )
 
     return updated_user

@@ -9,7 +9,7 @@ from app.api.deps import (
     get_current_active_user,
 )
 from app.core.config import logger
-from app.db.models import User, UserRole
+from app.db.models import AuditAction, User, UserRole
 from app.db.session import get_session
 from app.schemas.organization import (
     Organization,
@@ -17,6 +17,7 @@ from app.schemas.organization import (
     OrganizationUpdate,
 )
 from app.schemas.user import User as UserSchema
+from app.services.audit import AuditService
 from app.services.exceptions import (
     AlreadyExistsError,
     HasDependentsError,
@@ -50,6 +51,17 @@ async def create_organization(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         ) from e
+
+    audit_service = AuditService(db)
+    await audit_service.log_action(
+        action=AuditAction.ORG_CREATE,
+        user_id=current_user.id,
+        username=current_user.username,
+        organization_id=organization.id,
+        resource_type="organization",
+        resource_id=organization.id,
+        detail=f"Created organization '{organization.name}'",
+    )
     return organization
 
 
@@ -200,6 +212,15 @@ async def delete_organization(
             detail=str(e),
         ) from e
 
+    audit_service = AuditService(db)
+    await audit_service.log_action(
+        action=AuditAction.ORG_DELETE,
+        user_id=current_user.id,
+        username=current_user.username,
+        resource_type="organization",
+        resource_id=organization_id,
+    )
+
     return None
 
 
@@ -250,6 +271,16 @@ async def add_user_to_organization(
         user = await organization_service.add_user_to_organization(
             user_id, organization_id, admin_user_id=current_user.id
         )
+        audit_service = AuditService(db)
+        await audit_service.log_action(
+            action=AuditAction.ORG_ADD_USER,
+            user_id=current_user.id,
+            username=current_user.username,
+            organization_id=organization_id,
+            resource_type="organization",
+            resource_id=organization_id,
+            detail=f"Added user {user_id} to organization {organization_id}",
+        )
         return user
 
     # For admin users, check if they can add users to this organization
@@ -271,6 +302,16 @@ async def add_user_to_organization(
     )
     user = await organization_service.add_user_to_organization(
         user_id, organization_id, admin_user_id=current_user.id
+    )
+    audit_service = AuditService(db)
+    await audit_service.log_action(
+        action=AuditAction.ORG_ADD_USER,
+        user_id=current_user.id,
+        username=current_user.username,
+        organization_id=organization_id,
+        resource_type="organization",
+        resource_id=organization_id,
+        detail=f"Added user {user_id} to organization {organization_id}",
     )
     return user
 
@@ -317,6 +358,16 @@ async def remove_user_from_organization(
         user = await organization_service.remove_user_from_organization(
             user_id, admin_user_id=current_user.id
         )
+        audit_service = AuditService(db)
+        await audit_service.log_action(
+            action=AuditAction.ORG_REMOVE_USER,
+            user_id=current_user.id,
+            username=current_user.username,
+            organization_id=organization_id,
+            resource_type="organization",
+            resource_id=organization_id,
+            detail=f"Removed user {user_id} from organization {organization_id}",
+        )
         return user
 
     # For admin users, check access
@@ -348,6 +399,16 @@ async def remove_user_from_organization(
     logger.debug("User %s has permission, removing user %s", current_user.id, user_id)
     user = await organization_service.remove_user_from_organization(
         user_id, admin_user_id=current_user.id
+    )
+    audit_service = AuditService(db)
+    await audit_service.log_action(
+        action=AuditAction.ORG_REMOVE_USER,
+        user_id=current_user.id,
+        username=current_user.username,
+        organization_id=organization_id,
+        resource_type="organization",
+        resource_id=organization_id,
+        detail=f"Removed user {user_id} from organization {organization_id}",
     )
     return user
 

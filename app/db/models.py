@@ -36,6 +36,23 @@ class CertificateType(str, Enum):
     CLIENT = "client"
 
 
+class AuditAction(str, Enum):
+    CA_CREATE = "ca_create"
+    CA_DELETE = "ca_delete"
+    CA_EXPORT_PRIVATE_KEY = "ca_export_private_key"
+    CERT_CREATE = "cert_create"
+    CERT_REVOKE = "cert_revoke"
+    CERT_EXPORT_PRIVATE_KEY = "cert_export_private_key"
+    LOGIN_SUCCESS = "login_success"
+    LOGIN_FAILURE = "login_failure"
+    USER_CREATE = "user_create"
+    USER_UPDATE = "user_update"
+    ORG_CREATE = "org_create"
+    ORG_DELETE = "org_delete"
+    ORG_ADD_USER = "org_add_user"
+    ORG_REMOVE_USER = "org_remove_user"
+
+
 class Organization(SQLModel, table=True):
     __tablename__ = "organizations"
 
@@ -164,3 +181,19 @@ class User(SQLModel, table=True):
 
     organization_id: Optional[int] = Field(default=None, foreign_key="organizations.id")
     organization: Optional[Organization] = Relationship(back_populates="users")
+
+
+class AuditLog(SQLModel, table=True):
+    __tablename__ = "audit_logs"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), index=True)
+    action: AuditAction = Field(index=True)
+    user_id: Optional[int] = Field(default=None, foreign_key="users.id", index=True)
+    username: Optional[str] = None
+    organization_id: Optional[int] = Field(
+        default=None, foreign_key="organizations.id", index=True
+    )
+    resource_type: Optional[str] = None
+    resource_id: Optional[int] = None
+    detail: Optional[str] = None

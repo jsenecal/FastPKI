@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
-from app.db.models import PermissionAction, User, UserRole
+from app.db.models import AuditAction, PermissionAction, User, UserRole
 from app.db.session import get_session
 from app.schemas.ca import CACreate, CADetailResponse, CAResponse
+from app.services.audit import AuditService
 from app.services.ca import CAService
 from app.services.exceptions import NotFoundError, PermissionDeniedError
 from app.services.permission import PermissionService
@@ -47,6 +48,16 @@ async def create_ca(
             detail=f"Failed to create CA: {e!s}",
         ) from e
     else:
+        audit_service = AuditService(db)
+        await audit_service.log_action(
+            action=AuditAction.CA_CREATE,
+            user_id=current_user.id,
+            username=current_user.username,
+            organization_id=current_user.organization_id,
+            resource_type="ca",
+            resource_id=ca.id,
+            detail=f"Created CA '{ca.name}'",
+        )
         return ca
 
 
@@ -97,6 +108,15 @@ async def read_ca_with_private_key(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except PermissionDeniedError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
+    audit_service = AuditService(db)
+    await audit_service.log_action(
+        action=AuditAction.CA_EXPORT_PRIVATE_KEY,
+        user_id=current_user.id,
+        username=current_user.username,
+        organization_id=current_user.organization_id,
+        resource_type="ca",
+        resource_id=ca_id,
+    )
     return ca
 
 
@@ -116,3 +136,12 @@ async def delete_ca(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
     ca_service = CAService(db)
     await ca_service.delete_ca(ca_id)
+    audit_service = AuditService(db)
+    await audit_service.log_action(
+        action=AuditAction.CA_DELETE,
+        user_id=current_user.id,
+        username=current_user.username,
+        organization_id=current_user.organization_id,
+        resource_type="ca",
+        resource_id=ca_id,
+    )

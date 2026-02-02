@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
-from app.db.models import PermissionAction, User, UserRole
+from app.db.models import AuditAction, PermissionAction, User, UserRole
 from app.db.session import get_session
 from app.schemas.cert import (
     CertificateCreate,
@@ -12,6 +12,7 @@ from app.schemas.cert import (
     CertificateResponse,
     CertificateRevoke,
 )
+from app.services.audit import AuditService
 from app.services.cert import CertificateService
 from app.services.exceptions import NotFoundError, PermissionDeniedError
 from app.services.permission import PermissionService
@@ -60,6 +61,16 @@ async def create_certificate(
             detail=f"Failed to create certificate: {e!s}",
         ) from e
     else:
+        audit_service = AuditService(db)
+        await audit_service.log_action(
+            action=AuditAction.CERT_CREATE,
+            user_id=current_user.id,
+            username=current_user.username,
+            organization_id=current_user.organization_id,
+            resource_type="certificate",
+            resource_id=cert.id,
+            detail=f"Created certificate '{cert.common_name}'",
+        )
         return cert
 
 
@@ -116,6 +127,15 @@ async def read_certificate_with_private_key(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except PermissionDeniedError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
+    audit_service = AuditService(db)
+    await audit_service.log_action(
+        action=AuditAction.CERT_EXPORT_PRIVATE_KEY,
+        user_id=current_user.id,
+        username=current_user.username,
+        organization_id=current_user.organization_id,
+        resource_type="certificate",
+        resource_id=cert_id,
+    )
     return cert
 
 
@@ -149,4 +169,14 @@ async def revoke_certificate(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Certificate with ID {cert_id} not found",
         )
+    audit_service = AuditService(db)
+    await audit_service.log_action(
+        action=AuditAction.CERT_REVOKE,
+        user_id=current_user.id,
+        username=current_user.username,
+        organization_id=current_user.organization_id,
+        resource_type="certificate",
+        resource_id=cert_id,
+        detail=f"Revoked certificate '{cert.common_name}'",
+    )
     return cert
