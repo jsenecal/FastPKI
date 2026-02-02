@@ -1,5 +1,8 @@
 FROM python:3.11-slim
 
+ARG VERSION
+LABEL org.opencontainers.image.version="${VERSION}"
+
 WORKDIR /app
 
 # Install uv for faster dependency installation

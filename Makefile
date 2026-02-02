@@ -1,4 +1,4 @@
-.PHONY: install format lint test run clean docker-build docker-up docker-down docs docs-serve
+.PHONY: install format lint test run clean docker-build docker-up docker-down docs docs-serve bump-patch bump-minor bump-major
 
 # Install dependencies
 install:
@@ -58,3 +58,13 @@ docs:
 
 docs-serve:
 	mkdocs serve
+
+# Version bumping
+bump-patch:
+	uv run bumpver update --patch
+
+bump-minor:
+	uv run bumpver update --minor
+
+bump-major:
+	uv run bumpver update --major

@@ -39,6 +39,7 @@ dev = [
     "mypy>=1.5.0",
     "types-cryptography>=3.3.23.2",
     "mkdocs-material>=9.5.0",
+    "bumpver>=2023.1129",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -125,3 +126,16 @@ python_classes = "Test*"
 addopts = "--cov=app --cov-report=term-missing --cov-report=xml"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
+
+[tool.bumpver]
+current_version = "0.1.0"
+version_pattern = "MAJOR.MINOR.PATCH"
+commit_message = "release: Bump version {old_version} -> {new_version}"
+commit = true
+tag = true
+push = false
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = [
+    'version = "{version}"',
+]
