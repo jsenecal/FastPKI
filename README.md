@@ -7,8 +7,13 @@ FastPKI is an API-based PKI management system that provides an easier alternativ
 - Create and manage Certificate Authorities (CAs)
 - Issue certificates (server, client, and CA)
 - Revoke certificates
+- Organization management for multi-tenant deployments
+- Role-based access control (SUPERUSER, ADMIN, USER)
+- Per-user capability flags for fine-grained permissions
+- Ownership-based access control on CAs and certificates
 - RESTful API for easy integration
 - Compatible with SQLite and PostgreSQL
+- Database migrations with Alembic
 - Docker support for easy deployment
 - Type checking with mypy
 - Code quality with ruff linter and formatter
@@ -120,7 +125,37 @@ When the application is running, you can access the automatic API documentation 
 - Swagger UI: http://localhost:8000/api/v1/docs
 - ReDoc: http://localhost:8000/api/v1/redoc
 
-## Authentication and User Management
+## Authentication, Authorization & Permissions
+
+### User Roles
+
+FastPKI has three user roles:
+
+- **SUPERUSER** — Full access to all resources across the system
+- **ADMIN** — Full access to all resources within their organization
+- **USER** — Read access within their organization; write actions require capability flags
+
+### Permission Hierarchy
+
+Permission checks follow this order:
+
+1. **Superusers** have full access to everything
+2. **Resource creators** have full access to their own resources
+3. **Admins** have full access to all resources within their organization
+4. **Users** can read resources within their organization
+5. **Per-user capability flags** grant specific write actions to regular users
+
+### Capability Flags
+
+Regular users can be granted fine-grained permissions via boolean capability flags:
+
+| Flag | Description |
+|------|-------------|
+| `can_create_ca` | Create Certificate Authorities |
+| `can_create_cert` | Create certificates |
+| `can_revoke_cert` | Revoke certificates |
+| `can_export_private_key` | Export private keys |
+| `can_delete_ca` | Delete Certificate Authorities |
 
 ### First User Creation
 
@@ -165,20 +200,21 @@ FastPKI supports both SQLite and PostgreSQL:
 ## Project Structure
 
 ```
-/app                # Main application code
-  /api              # API endpoints
-  /core             # Core configuration
-  /db               # Database models and session management
-  /schemas          # Pydantic schemas for API requests/responses
-  /services         # Business logic services
-/tests              # Test suite
-/docker             # Docker configuration
-/data               # SQLite database files and other persistent data
+/alembic              # Database migrations
+/app                  # Main application code
+  /api                # API endpoints
+  /core               # Core configuration
+  /db                 # Database models and session management
+  /schemas            # Pydantic schemas for API requests/responses
+  /services           # Business logic (CA, certificate, user, organization, permission)
+/tests                # Test suite (208 tests, 90% coverage)
+/docker               # Docker configuration
+/data                 # SQLite database files and other persistent data
 ```
 
 ## Testing
 
-Tests are written using pytest:
+The test suite includes 208 tests with 90% code coverage. Tests are written using pytest:
 
 ```bash
 # Run tests (using make)

@@ -2,7 +2,7 @@
 
 This document outlines the planned features and implementation steps for FastPKI, following a Test-Driven Development approach.
 
-**Current status**: 113 tests passing, 77% coverage.
+**Current status**: 208 tests passing, 90% coverage.
 
 ## Authentication and Authorization System
 
@@ -39,14 +39,14 @@ Our goal is to create a comprehensive authentication and authorization system wi
 
 ### 3. Permission System
 
-- [ ] Design and implement Permission model
-  - [ ] Write tests for permission checking
-  - [ ] Write tests for permission granting/revoking
-  - [ ] Write tests for hierarchical permissions (user, org, role)
-  - [ ] Implement PermissionService
-  - [ ] Add permission checking dependencies
-  - [ ] Update CA and Certificate models with ownership fields
-  - [ ] Create permission management endpoints
+- [x] Design and implement permission system (capability-based flags on User model instead of separate Permission table)
+  - [x] Write tests for permission checking
+  - [x] Write tests for permission granting/revoking
+  - [x] Write tests for hierarchical permissions (user, org, role)
+  - [x] Implement PermissionService
+  - [x] Add permission checking dependencies
+  - [x] Update CA and Certificate models with ownership fields
+  - [x] Create permission management endpoints
 
 ### 4. Secure API Endpoints
 
@@ -54,13 +54,13 @@ Our goal is to create a comprehensive authentication and authorization system wi
 - [x] Add authentication to Certificate endpoints
 - [x] Add authentication to Export endpoints
 - [x] Add 401 unauthenticated access tests for CA, Certificate, and Export endpoints
-- [ ] Update existing endpoints with per-resource permission checks
-  - [ ] Write tests for CA endpoints with permission checks
-  - [ ] Write tests for Certificate endpoints with permission checks
-  - [ ] Write tests for Export endpoints with permission checks
-  - [ ] Refactor CA endpoints to use permissions
-  - [ ] Refactor Certificate endpoints to use permissions
-  - [ ] Refactor Export endpoints to use permissions
+- [x] Update existing endpoints with per-resource permission checks
+  - [x] Write tests for CA endpoints with permission checks
+  - [x] Write tests for Certificate endpoints with permission checks
+  - [x] Write tests for Export endpoints with permission checks
+  - [x] Refactor CA endpoints to use permissions
+  - [x] Refactor Certificate endpoints to use permissions
+  - [x] Refactor Export endpoints to use permissions
 
 ### 5. Audit Logging System
 
@@ -111,12 +111,13 @@ Our goal is to create a comprehensive authentication and authorization system wi
 The authentication system uses:
 - Bcrypt for password hashing (direct `bcrypt` library)
 - PyJWT for JWT token encoding/decoding
-- Role-based access control for coarse-grained permissions
-- Per-resource permissions for fine-grained access control (planned)
+- Role-based access control for coarse-grained permissions (SUPERUSER, ADMIN, USER)
+- Per-user capability flags for fine-grained write permissions
+- Ownership tracking via `created_by_user_id` on CA and Certificate models
 
 ### Model Structure
 
-**User Model**:
+**User Model** (with capability flags):
 ```python
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -125,8 +126,14 @@ class User(SQLModel, table=True):
     hashed_password: str
     role: UserRole = Field(default=UserRole.USER)
     is_active: bool = Field(default=True)
-
     organization_id: Optional[int] = Field(foreign_key="organizations.id")
+
+    # Capability flags
+    can_create_ca: bool = Field(default=False)
+    can_create_cert: bool = Field(default=False)
+    can_revoke_cert: bool = Field(default=False)
+    can_export_private_key: bool = Field(default=False)
+    can_delete_ca: bool = Field(default=False)
 ```
 
 **Organization Model**:
@@ -137,27 +144,18 @@ class Organization(SQLModel, table=True):
     # Relationships with users and resources
 ```
 
-**Permission Model** (planned):
-```python
-class Permission(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    permission_type: PermissionType
-    resource_type: ResourceType
-    resource_id: int
+**PermissionService** (capability-based, no separate Permission table):
 
-    # Target of permission (user or organization)
-    user_id: Optional[int] = Field(foreign_key="users.id")
-    organization_id: Optional[int] = Field(foreign_key="organizations.id")
-```
+The PermissionService maps `PermissionAction` enums to User capability fields and enforces access via `check_ca_access()` and `check_cert_access()` methods.
 
 ### Permission Checking Logic
 
-Permission checking will follow this hierarchy:
-1. Superusers have access to everything
-2. Resource owners have full access to their resources
-3. Organization admins have access to all organization resources
-4. Users have access based on explicitly granted permissions
-5. Organization members have access based on organization permissions
+Permission checking follows this hierarchy:
+1. Superusers have full access to everything
+2. Resource creators have full access to their own resources
+3. Admins have full access within their organization
+4. Users can read resources within their organization
+5. Users need specific capability flags for write actions
 
 ## Approach to Testing
 
@@ -173,7 +171,5 @@ Each component of the auth system will be tested at multiple levels:
 
 ## Next Steps
 
-1. Design and implement the Permission model
-2. Add per-resource permission checks to endpoints
-3. Implement audit logging
-4. Encrypt private keys at rest
+1. Implement audit logging system
+2. Encrypt private keys at rest
