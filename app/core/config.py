@@ -59,6 +59,26 @@ class Settings(BaseSettings):
             raise ValueError("SECRET_KEY must be at least 32 characters long")  # noqa: TRY003
         return v
 
+    # Private key encryption
+    PRIVATE_KEY_ENCRYPTION_KEY: Optional[str] = None
+
+    @field_validator("PRIVATE_KEY_ENCRYPTION_KEY")
+    def validate_encryption_key(cls, v: Optional[str]) -> Optional[str]:  # noqa: N805
+        if v is None:
+            return v
+        from cryptography.fernet import Fernet
+
+        try:
+            Fernet(v.encode("utf-8"))
+        except Exception as e:
+            raise ValueError(  # noqa: TRY003
+                "PRIVATE_KEY_ENCRYPTION_KEY must be a valid "
+                "Fernet key. Generate one with: python -c "
+                "'from cryptography.fernet import Fernet; "
+                "print(Fernet.generate_key().decode())'"
+            ) from e
+        return v
+
     # Logging
     LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
 

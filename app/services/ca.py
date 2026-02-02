@@ -12,6 +12,7 @@ from sqlmodel import select
 
 from app.core.config import settings
 from app.db.models import CertificateAuthority
+from app.services.encryption import EncryptionService
 
 UTC = ZoneInfo("UTC")
 
@@ -138,7 +139,9 @@ class CAService:
             subject_dn=subject_dn,
             key_size=key_size,
             valid_days=valid_days,
-            private_key=private_key_pem.decode("utf-8"),
+            private_key=EncryptionService.encrypt_private_key(
+                private_key_pem.decode("utf-8")
+            ),
             certificate=certificate_pem.decode("utf-8"),
             organization_id=organization_id,
             created_by_user_id=created_by_user_id,

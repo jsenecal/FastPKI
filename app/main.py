@@ -7,11 +7,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import api_router
 from app.core.config import settings
 from app.db.session import create_db_and_tables
+from app.services.encryption import encrypt_existing_keys
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await create_db_and_tables()
+    await encrypt_existing_keys()
     yield
 
 

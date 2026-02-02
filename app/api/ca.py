@@ -7,6 +7,7 @@ from app.db.session import get_session
 from app.schemas.ca import CACreate, CADetailResponse, CAResponse
 from app.services.audit import AuditService
 from app.services.ca import CAService
+from app.services.encryption import EncryptionService
 from app.services.exceptions import NotFoundError, PermissionDeniedError
 from app.services.permission import PermissionService
 
@@ -58,6 +59,7 @@ async def create_ca(
             resource_id=ca.id,
             detail=f"Created CA '{ca.name}'",
         )
+        ca.private_key = EncryptionService.decrypt_private_key(ca.private_key)
         return ca
 
 
@@ -117,6 +119,7 @@ async def read_ca_with_private_key(
         resource_type="ca",
         resource_id=ca_id,
     )
+    ca.private_key = EncryptionService.decrypt_private_key(ca.private_key)
     return ca
 
 

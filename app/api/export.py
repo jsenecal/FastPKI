@@ -7,6 +7,7 @@ from app.db.session import get_session
 from app.services.audit import AuditService
 from app.services.ca import CAService
 from app.services.cert import CertificateService
+from app.services.encryption import EncryptionService
 from app.services.exceptions import NotFoundError, PermissionDeniedError
 from app.services.permission import PermissionService
 
@@ -65,7 +66,7 @@ async def export_ca_private_key(
     )
 
     return Response(
-        content=ca.private_key,
+        content=EncryptionService.decrypt_private_key(ca.private_key),
         media_type="application/x-pem-file",
         headers={
             "Content-Disposition": (f"attachment; filename=ca_{ca_id}_private_key.pem")
@@ -133,7 +134,7 @@ async def export_certificate_private_key(
     )
 
     return Response(
-        content=cert.private_key,
+        content=EncryptionService.decrypt_private_key(cert.private_key),
         media_type="application/x-pem-file",
         headers={
             "Content-Disposition": (

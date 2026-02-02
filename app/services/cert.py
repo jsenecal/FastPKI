@@ -17,6 +17,7 @@ from app.db.models import (
     CRLEntry,
 )
 from app.services.ca import CAService
+from app.services.encryption import EncryptionService
 
 UTC = ZoneInfo("UTC")
 
@@ -47,8 +48,9 @@ class CertificateService:
             raise ValueError(f"No CA: {ca_id}")  # noqa: TRY003
 
         # Load CA private key and certificate
+        ca_key_pem = EncryptionService.decrypt_private_key(ca.private_key)
         ca_private_key = serialization.load_pem_private_key(
-            ca.private_key.encode("utf-8"),
+            ca_key_pem.encode("utf-8"),
             password=None,
         )
         ca_cert = x509.load_pem_x509_certificate(
@@ -152,7 +154,11 @@ class CertificateService:
             key_size=key_size,
             valid_days=valid_days,
             status=CertificateStatus.VALID,
-            private_key=private_key_pem.decode("utf-8") if private_key_pem else None,
+            private_key=EncryptionService.encrypt_private_key(
+                private_key_pem.decode("utf-8")
+            )
+            if private_key_pem
+            else None,
             certificate=certificate_pem.decode("utf-8"),
             serial_number=format(serial_number, "x"),
             not_before=not_before,

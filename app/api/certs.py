@@ -14,6 +14,7 @@ from app.schemas.cert import (
 )
 from app.services.audit import AuditService
 from app.services.cert import CertificateService
+from app.services.encryption import EncryptionService
 from app.services.exceptions import NotFoundError, PermissionDeniedError
 from app.services.permission import PermissionService
 
@@ -70,6 +71,9 @@ async def create_certificate(
             resource_type="certificate",
             resource_id=cert.id,
             detail=f"Created certificate '{cert.common_name}'",
+        )
+        cert.private_key = EncryptionService.decrypt_optional_private_key(
+            cert.private_key
         )
         return cert
 
@@ -136,6 +140,7 @@ async def read_certificate_with_private_key(
         resource_type="certificate",
         resource_id=cert_id,
     )
+    cert.private_key = EncryptionService.decrypt_optional_private_key(cert.private_key)
     return cert
 
 
