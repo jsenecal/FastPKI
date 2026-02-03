@@ -177,12 +177,12 @@ async def superuser_client(setup_test_db, test_superuser):
     # Apply the overrides
     app.dependency_overrides[get_current_user] = override_get_current_user
     app.dependency_overrides[get_current_active_user] = override_get_current_active_user
-    app.dependency_overrides[
-        get_current_active_superuser
-    ] = override_get_current_active_superuser
-    app.dependency_overrides[
-        get_current_active_admin_user
-    ] = override_get_current_active_admin_user
+    app.dependency_overrides[get_current_active_superuser] = (
+        override_get_current_active_superuser
+    )
+    app.dependency_overrides[get_current_active_admin_user] = (
+        override_get_current_active_admin_user
+    )
 
     # Create test client
     transport = ASGITransport(app=app)
@@ -214,9 +214,9 @@ async def admin_client(setup_test_db, test_admin_user):
     # Apply the overrides
     app.dependency_overrides[get_current_user] = override_get_current_user
     app.dependency_overrides[get_current_active_user] = override_get_current_active_user
-    app.dependency_overrides[
-        get_current_active_admin_user
-    ] = override_get_current_active_admin_user
+    app.dependency_overrides[get_current_active_admin_user] = (
+        override_get_current_active_admin_user
+    )
 
     # Create test client
     transport = ASGITransport(app=app)
@@ -462,15 +462,15 @@ async def test_add_user_to_organization(setup_test_db):
 
         app.dependency_overrides[get_session] = override_get_session
         app.dependency_overrides[get_current_user] = override_get_current_user
-        app.dependency_overrides[
-            get_current_active_user
-        ] = override_get_current_active_user
-        app.dependency_overrides[
-            get_current_active_superuser
-        ] = override_get_current_active_superuser
-        app.dependency_overrides[
-            get_current_active_admin_user
-        ] = override_get_current_active_superuser
+        app.dependency_overrides[get_current_active_user] = (
+            override_get_current_active_user
+        )
+        app.dependency_overrides[get_current_active_superuser] = (
+            override_get_current_active_superuser
+        )
+        app.dependency_overrides[get_current_active_admin_user] = (
+            override_get_current_active_superuser
+        )
 
         # Create test client
         transport = ASGITransport(app=app)
@@ -551,15 +551,15 @@ async def test_remove_user_from_organization(setup_test_db):
 
         app.dependency_overrides[get_session] = override_get_session
         app.dependency_overrides[get_current_user] = override_get_current_user
-        app.dependency_overrides[
-            get_current_active_user
-        ] = override_get_current_active_user
-        app.dependency_overrides[
-            get_current_active_superuser
-        ] = override_get_current_active_superuser
-        app.dependency_overrides[
-            get_current_active_admin_user
-        ] = override_get_current_active_superuser
+        app.dependency_overrides[get_current_active_user] = (
+            override_get_current_active_user
+        )
+        app.dependency_overrides[get_current_active_superuser] = (
+            override_get_current_active_superuser
+        )
+        app.dependency_overrides[get_current_active_admin_user] = (
+            override_get_current_active_superuser
+        )
 
         # Create test client
         transport = ASGITransport(app=app)
@@ -643,15 +643,15 @@ async def test_get_organization_users(setup_test_db):
 
         app.dependency_overrides[get_session] = override_get_session
         app.dependency_overrides[get_current_user] = override_get_current_user
-        app.dependency_overrides[
-            get_current_active_user
-        ] = override_get_current_active_user
-        app.dependency_overrides[
-            get_current_active_superuser
-        ] = override_get_current_active_superuser
-        app.dependency_overrides[
-            get_current_active_admin_user
-        ] = override_get_current_active_superuser
+        app.dependency_overrides[get_current_active_user] = (
+            override_get_current_active_user
+        )
+        app.dependency_overrides[get_current_active_superuser] = (
+            override_get_current_active_superuser
+        )
+        app.dependency_overrides[get_current_active_admin_user] = (
+            override_get_current_active_superuser
+        )
 
         # Create test client
         transport = ASGITransport(app=app)
@@ -757,12 +757,12 @@ async def test_user_access_own_organization(setup_test_db):
 
         app.dependency_overrides[get_session] = override_get_session
         app.dependency_overrides[get_current_user] = override_get_current_user
-        app.dependency_overrides[
-            get_current_active_user
-        ] = override_get_current_active_user
-        app.dependency_overrides[
-            get_current_active_admin_user
-        ] = override_get_current_active_admin_user
+        app.dependency_overrides[get_current_active_user] = (
+            override_get_current_active_user
+        )
+        app.dependency_overrides[get_current_active_admin_user] = (
+            override_get_current_active_admin_user
+        )
 
         # Create test client
         transport = ASGITransport(app=app)
