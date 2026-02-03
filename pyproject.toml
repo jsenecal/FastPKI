@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "API-based PKI management system"
 readme = "README.md"
 requires-python = ">=3.9"
-license = { file = "LICENSE" }
+license = "AGPL-3.0-only"
 authors = [
     { name = "FastPKI Team" },
 ]
