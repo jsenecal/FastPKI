@@ -18,6 +18,7 @@ from app.db.models import (
 )
 from app.services.ca import CAService
 from app.services.encryption import EncryptionService
+from app.services.exceptions import LeafCertNotAllowedError
 
 UTC = ZoneInfo("UTC")
 
@@ -46,6 +47,11 @@ class CertificateService:
         ca = await self.db.get(CertificateAuthority, ca_id)
         if not ca:
             raise ValueError(f"No CA: {ca_id}")  # noqa: TRY003
+
+        if not ca.allow_leaf_certs:
+            raise LeafCertNotAllowedError(  # noqa: TRY003
+                f"CA {ca_id} does not allow leaf certificate issuance"
+            )
 
         # Load CA private key and certificate
         ca_key_pem = EncryptionService.decrypt_private_key(ca.private_key)

@@ -8,7 +8,11 @@ from app.schemas.ca import CACreate, CADetailResponse, CAResponse
 from app.services.audit import AuditService
 from app.services.ca import CAService
 from app.services.encryption import EncryptionService
-from app.services.exceptions import NotFoundError, PermissionDeniedError
+from app.services.exceptions import (
+    HasDependentsError,
+    NotFoundError,
+    PermissionDeniedError,
+)
 from app.services.permission import PermissionService
 
 router = APIRouter()
@@ -42,6 +46,9 @@ async def create_ca(
             valid_days=ca_in.valid_days,
             organization_id=current_user.organization_id,
             created_by_user_id=current_user.id,
+            parent_ca_id=ca_in.parent_ca_id,
+            path_length=ca_in.path_length,
+            allow_leaf_certs=ca_in.allow_leaf_certs,
         )
     except Exception as e:
         raise HTTPException(
@@ -123,6 +130,44 @@ async def read_ca_with_private_key(
     return ca
 
 
+@router.get("/{ca_id}/chain", response_model=list[CAResponse])
+async def read_ca_chain(
+    ca_id: int,
+    db: AsyncSession = Depends(get_session),  # noqa: B008
+    current_user: User = Depends(get_current_active_user),  # noqa: B008
+) -> list[CAResponse]:
+    """Get the certificate chain for a CA, from the CA up to the root."""
+    perm = PermissionService(db)
+    try:
+        await perm.check_ca_access(current_user, ca_id, PermissionAction.READ)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
+    ca_service = CAService(db)
+    chain = await ca_service.get_ca_chain(ca_id)
+    return chain
+
+
+@router.get("/{ca_id}/children", response_model=list[CAResponse])
+async def read_ca_children(
+    ca_id: int,
+    db: AsyncSession = Depends(get_session),  # noqa: B008
+    current_user: User = Depends(get_current_active_user),  # noqa: B008
+) -> list[CAResponse]:
+    """Get direct child CAs of the specified CA."""
+    perm = PermissionService(db)
+    try:
+        await perm.check_ca_access(current_user, ca_id, PermissionAction.READ)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
+    ca_service = CAService(db)
+    children = await ca_service.get_child_cas(ca_id)
+    return children
+
+
 @router.delete("/{ca_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_ca(
     ca_id: int,
@@ -138,7 +183,13 @@ async def delete_ca(
     except PermissionDeniedError as e:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
     ca_service = CAService(db)
-    await ca_service.delete_ca(ca_id)
+    try:
+        await ca_service.delete_ca(ca_id)
+    except HasDependentsError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e),
+        ) from e
     audit_service = AuditService(db)
     await audit_service.log_action(
         action=AuditAction.CA_DELETE,

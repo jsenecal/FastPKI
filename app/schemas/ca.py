@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 
 
 class CACreate(BaseModel):
@@ -10,6 +10,9 @@ class CACreate(BaseModel):
     subject_dn: str
     key_size: Optional[int] = None
     valid_days: Optional[int] = None
+    parent_ca_id: Optional[int] = None
+    path_length: Optional[int] = None
+    allow_leaf_certs: Optional[bool] = None
 
 
 class CAResponse(BaseModel):
@@ -26,6 +29,14 @@ class CAResponse(BaseModel):
     certificate: str
     organization_id: Optional[int] = None
     created_by_user_id: Optional[int] = None
+    parent_ca_id: Optional[int] = None
+    path_length: Optional[int] = None
+    allow_leaf_certs: bool
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def is_root(self) -> bool:
+        return self.parent_ca_id is None
 
 
 class CADetailResponse(CAResponse):

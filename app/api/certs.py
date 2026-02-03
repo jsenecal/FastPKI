@@ -15,7 +15,11 @@ from app.schemas.cert import (
 from app.services.audit import AuditService
 from app.services.cert import CertificateService
 from app.services.encryption import EncryptionService
-from app.services.exceptions import NotFoundError, PermissionDeniedError
+from app.services.exceptions import (
+    LeafCertNotAllowedError,
+    NotFoundError,
+    PermissionDeniedError,
+)
 from app.services.permission import PermissionService
 
 router = APIRouter()
@@ -51,6 +55,11 @@ async def create_certificate(
             organization_id=current_user.organization_id,
             created_by_user_id=current_user.id,
         )
+    except LeafCertNotAllowedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

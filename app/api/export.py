@@ -168,7 +168,7 @@ async def export_certificate_chain(
     chain = []
     chain.append(cert.certificate)
 
-    # Add issuer certificates
+    # Add issuer certificates, walking up the CA hierarchy
     current_issuer_id = cert.issuer_id
     while current_issuer_id is not None:
         issuer = await ca_service.get_ca(current_issuer_id)
@@ -181,7 +181,7 @@ async def export_certificate_chain(
                 break
         else:
             chain.append(issuer.certificate)
-            break
+            current_issuer_id = issuer.parent_ca_id
 
     chain_pem = "\n".join(chain)
 

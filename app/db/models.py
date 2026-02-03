@@ -98,6 +98,20 @@ class CertificateAuthority(CertificateAuthorityBase, table=True):
     organization_id: Optional[int] = Field(default=None, foreign_key="organizations.id")
     created_by_user_id: Optional[int] = Field(default=None, foreign_key="users.id")
 
+    parent_ca_id: Optional[int] = Field(
+        default=None, foreign_key="certificate_authorities.id"
+    )
+    path_length: Optional[int] = Field(default=None)
+    allow_leaf_certs: bool = Field(default=True)
+
+    parent_ca: Optional["CertificateAuthority"] = Relationship(
+        back_populates="child_cas",
+        sa_relationship_kwargs={"remote_side": "CertificateAuthority.id"},
+    )
+    child_cas: list["CertificateAuthority"] = Relationship(
+        back_populates="parent_ca",
+    )
+
     certificates: list["Certificate"] = Relationship(
         back_populates="issuer",
         sa_relationship_kwargs={"cascade": "all, delete-orphan"},

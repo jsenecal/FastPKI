@@ -16,3 +16,7 @@ class PermissionDeniedError(ServiceError):
 
 class HasDependentsError(ServiceError):
     """Raised when a resource cannot be deleted because it has dependents."""
+
+
+class LeafCertNotAllowedError(ServiceError):
+    """Raised when a CA does not allow leaf certificate issuance."""
