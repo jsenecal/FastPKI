@@ -32,9 +32,20 @@ FastPKI is an API-based PKI management system that provides an easier alternativ
 
 ## Quick Start
 
-### Using Docker
+### Using the Container Image
 
-The easiest way to get started is using Docker:
+Pre-built images are available on GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/jsenecal/fastpki:latest
+```
+
+Available tags:
+- `latest` — Latest release
+- `<version>` — Specific release (e.g. `0.1.0`)
+- `master` — Latest build from master branch
+
+### Using Docker Compose
 
 ```bash
 # Clone the repository
