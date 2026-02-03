@@ -45,13 +45,13 @@ class OrganizationService:
 
     async def get_organization_by_id(self, org_id: int) -> Optional[Organization]:
         """Get an organization by ID."""
-        query = select(Organization).where(Organization.id == org_id)  # type: ignore
+        query = select(Organization).where(Organization.id == org_id)
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
     async def get_organization_by_name(self, name: str) -> Optional[Organization]:
         """Get an organization by name."""
-        query = select(Organization).where(Organization.name == name)  # type: ignore
+        query = select(Organization).where(Organization.name == name)
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
@@ -159,13 +159,13 @@ class OrganizationService:
 
     async def get_organization_users(self, org_id: int) -> list[User]:
         """Get all users in an organization."""
-        query = select(User).where(User.organization_id == org_id)  # type: ignore
+        query = select(User).where(User.organization_id == org_id)
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
     async def get_organization_user_count(self, org_id: int) -> int:
         """Get the count of users in an organization."""
-        query = select(func.count(User.id)).where(User.organization_id == org_id)  # type: ignore
+        query = select(func.count(User.id)).where(User.organization_id == org_id)
         result = await self.db.execute(query)
         return result.scalar_one()
 
@@ -227,8 +227,8 @@ class OrganizationService:
         self, admin_user_id: int, user_id: int
     ) -> bool:
         """Check if a user can remove another user from an organization."""
-        admin_query = select(User).where(User.id == admin_user_id)  # type: ignore
-        user_query = select(User).where(User.id == user_id)  # type: ignore
+        admin_query = select(User).where(User.id == admin_user_id)
+        user_query = select(User).where(User.id == user_id)
 
         admin_result = await self.db.execute(admin_query)
         user_result = await self.db.execute(user_query)
