@@ -103,8 +103,13 @@ This page documents the database models and enumerations used by FastPKI.
 | `certificate` | `str` | — | PEM-encoded certificate |
 | `organization_id` | `int` | FK → `organizations.id`, nullable | Owning organization |
 | `created_by_user_id` | `int` | FK → `users.id`, nullable | Creating user |
+| `parent_ca_id` | `int` | FK → `certificate_authorities.id`, nullable | Parent CA (null for root CAs) |
+| `path_length` | `int` | Nullable | BasicConstraints path length constraint |
+| `allow_leaf_certs` | `bool` | Default `true` | Whether this CA can issue leaf certificates |
 | `created_at` | `datetime` | — | Creation timestamp (UTC) |
 | `updated_at` | `datetime` | — | Last update timestamp (UTC) |
+
+**Relationships:** A CA can have one `parent_ca` and many `child_cas`, forming a hierarchy.
 
 ### `Certificate`
 

@@ -218,8 +218,11 @@ Create a new CA.
 | `description` | `string` | No | `null` | Description |
 | `key_size` | `int` | No | `CA_KEY_SIZE` | RSA key size |
 | `valid_days` | `int` | No | `CA_CERT_DAYS` | Validity in days |
+| `parent_ca_id` | `int` | No | `null` | Parent CA ID (creates an intermediate) |
+| `path_length` | `int` | No | `null` | BasicConstraints path length |
+| `allow_leaf_certs` | `bool` | No | `null` | Override leaf cert policy (auto-managed if `null`) |
 
-**Response** `201`: CA detail (includes private key). **Errors:** `400`, `403`.
+**Response** `201`: CA detail (includes private key, `is_root`, `allow_leaf_certs`). **Errors:** `400`, `403`.
 
 ### `GET /cas/`
 
@@ -247,14 +250,30 @@ Get a CA including its private key.
 
 **Response** `200`: CA detail (includes private key). **Errors:** `403`, `404`.
 
+### `GET /cas/{ca_id}/chain`
+
+Get the certificate chain from a CA up to the root.
+
+- **Auth required:** Read access to the CA
+
+**Response** `200`: Array of CA objects ordered from the specified CA to the root. **Errors:** `403`, `404`.
+
+### `GET /cas/{ca_id}/children`
+
+Get direct child CAs of the specified CA.
+
+- **Auth required:** Read access to the CA
+
+**Response** `200`: Array of child CA objects. **Errors:** `403`, `404`.
+
 ### `DELETE /cas/{ca_id}`
 
-Delete a CA and all its certificates.
+Delete a CA and all its certificates. CAs with child CAs cannot be deleted.
 
 - **Auth required:** `delete_ca` capability, Admin (same org), or Superuser
 - **Audit-logged**
 
-**Response** `204`. **Errors:** `403`, `404`.
+**Response** `204`. **Errors:** `403`, `404`, `409` (has child CAs).
 
 ---
 
@@ -276,7 +295,7 @@ Issue a new certificate under the specified CA.
 | `valid_days` | `int` | No | `CERT_DAYS` | Validity in days |
 | `include_private_key` | `bool` | No | `true` | Generate a private key |
 
-**Response** `201`: Certificate detail (includes private key if generated). **Errors:** `400`, `403`, `404`.
+**Response** `201`: Certificate detail (includes private key if generated). **Errors:** `400` (includes when CA has `allow_leaf_certs=false`), `403`, `404`.
 
 ### `GET /certificates/`
 

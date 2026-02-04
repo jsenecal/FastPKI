@@ -9,6 +9,8 @@ FastPKI is an API-based PKI management system that provides an easier alternativ
 ## Features
 
 - Create and manage Certificate Authorities (CAs)
+- Intermediate CA hierarchy with path length constraints
+- Automatic `allow_leaf_certs` policy enforcement
 - Issue certificates (server, client, and CA)
 - Revoke certificates
 - Organization management for multi-tenant deployments
@@ -222,14 +224,14 @@ FastPKI supports both SQLite and PostgreSQL:
   /db                 # Database models and session management
   /schemas            # Pydantic schemas for API requests/responses
   /services           # Business logic (CA, certificate, user, organization, permission)
-/tests                # Test suite (208 tests, 90% coverage)
+/tests                # Test suite (279 tests, 90% coverage)
 /docker               # Docker configuration
 /data                 # SQLite database files and other persistent data
 ```
 
 ## Testing
 
-The test suite includes 208 tests with 90% code coverage. Tests are written using pytest:
+The test suite includes 279 tests with 90% code coverage. Tests are written using pytest:
 
 ```bash
 # Run tests (using make)
