@@ -59,10 +59,17 @@ class Organization(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(index=True, unique=True)
     description: Optional[str] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            nullable=False,
+            default=lambda: datetime.now(UTC),
+        )
+    )
     updated_at: datetime = Field(
         sa_column=Column(
-            DateTime,
+            DateTime(timezone=True),
+            nullable=False,
             default=lambda: datetime.now(UTC),
             onupdate=lambda: datetime.now(UTC),
         )
@@ -83,10 +90,17 @@ class CertificateAuthority(CertificateAuthorityBase, table=True):
     __tablename__ = "certificate_authorities"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            nullable=False,
+            default=lambda: datetime.now(UTC),
+        )
+    )
     updated_at: datetime = Field(
         sa_column=Column(
-            DateTime,
+            DateTime(timezone=True),
+            nullable=False,
             default=lambda: datetime.now(UTC),
             onupdate=lambda: datetime.now(UTC),
         )
@@ -131,10 +145,17 @@ class Certificate(CertificateBase, table=True):
     __tablename__ = "certificates"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            nullable=False,
+            default=lambda: datetime.now(UTC),
+        )
+    )
     updated_at: datetime = Field(
         sa_column=Column(
-            DateTime,
+            DateTime(timezone=True),
+            nullable=False,
             default=lambda: datetime.now(UTC),
             onupdate=lambda: datetime.now(UTC),
         )
@@ -143,9 +164,15 @@ class Certificate(CertificateBase, table=True):
     private_key: Optional[str] = None  # PEM encoded
     certificate: str  # PEM encoded
     serial_number: str = Field(index=True)
-    not_before: datetime
-    not_after: datetime
-    revoked_at: Optional[datetime] = None
+    not_before: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
+    not_after: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
+    revoked_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
 
     issuer_id: Optional[int] = Field(
         default=None, foreign_key="certificate_authorities.id"
@@ -160,10 +187,18 @@ class CRLEntry(SQLModel, table=True):
     __tablename__ = "crl_entries"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            nullable=False,
+            default=lambda: datetime.now(UTC),
+        )
+    )
 
     serial_number: str = Field(index=True)
-    revocation_date: datetime
+    revocation_date: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
     reason: Optional[str] = None
 
     ca_id: int = Field(foreign_key="certificate_authorities.id")
@@ -178,10 +213,17 @@ class User(SQLModel, table=True):
     hashed_password: str
     role: UserRole = Field(default=UserRole.USER)
     is_active: bool = Field(default=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            nullable=False,
+            default=lambda: datetime.now(UTC),
+        )
+    )
     updated_at: datetime = Field(
         sa_column=Column(
-            DateTime,
+            DateTime(timezone=True),
+            nullable=False,
             default=lambda: datetime.now(UTC),
             onupdate=lambda: datetime.now(UTC),
         )
@@ -201,7 +243,14 @@ class AuditLog(SQLModel, table=True):
     __tablename__ = "audit_logs"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), index=True)
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            nullable=False,
+            default=lambda: datetime.now(UTC),
+            index=True,
+        )
+    )
     action: AuditAction = Field(index=True)
     user_id: Optional[int] = Field(default=None, foreign_key="users.id", index=True)
     username: Optional[str] = None
