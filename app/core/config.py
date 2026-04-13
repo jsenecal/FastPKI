@@ -85,6 +85,9 @@ class Settings(BaseSettings):
     # CORS settings
     BACKEND_CORS_ORIGINS: list[str] = ["*"]
 
+    # Registration settings
+    ALLOW_UNAUTHENTICATED_REGISTRATION: bool = False
+
 
 settings = Settings()
 

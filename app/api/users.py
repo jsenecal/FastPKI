@@ -72,6 +72,26 @@ async def create_user(
 
     logger.debug("First user check: %s", first_user)
 
+    # If not the first user and not authenticated, check registration policy
+    if not first_user and current_user is None:
+        # Elevated roles always require authentication
+        if user_in.role in [UserRole.ADMIN, UserRole.SUPERUSER]:
+            logger.info(
+                "Create user failed: insufficient permissions to create %s user",
+                user_in.role,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not enough permissions to create admin or superuser accounts",
+            )
+        # Regular user creation requires the setting to be enabled
+        if not settings.ALLOW_UNAUTHENTICATED_REGISTRATION:
+            logger.info("Create user failed: unauthenticated registration is disabled")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Unauthenticated registration is disabled",
+            )
+
     # Only superusers can create users with admin/superuser roles
     # But for the first user in the system, we allow any role
     if (
