@@ -21,6 +21,7 @@ nav = [
     { "Organizations" = "guides/organizations.md" },
     { "Users" = "guides/users.md" },
     { "Audit Logs" = "guides/audit-logs.md" },
+    { "CLI Tool" = "guides/cli.md" },
   ] },
   { "Security" = [
     { "Authentication" = "security/authentication.md" },
@@ -39,6 +40,7 @@ nav = [
     { "API Endpoints" = "reference/api.md" },
     { "Configuration" = "reference/configuration.md" },
     { "Models" = "reference/models.md" },
+    { "CLI Reference" = "reference/cli.md" },
   ] },
 ]
 

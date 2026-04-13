@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -26,7 +26,7 @@ router = APIRouter()
 async def create_user(
     user_in: UserCreate,
     db: AsyncSession = Depends(get_session),  # noqa: B008
-    token: Optional[str] = Depends(oauth2_scheme_optional),
+    token: str | None = Depends(oauth2_scheme_optional),
 ) -> Any:
     logger.debug("Create user request for username: %s", user_in.username)
     user_service = UserService(db)

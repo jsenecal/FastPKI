@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 from cryptography.fernet import Fernet, InvalidToken
 
@@ -10,7 +9,7 @@ logger = logging.getLogger("fastpki")
 
 class EncryptionService:
     @staticmethod
-    def _get_fernet() -> Optional[Fernet]:
+    def _get_fernet() -> Fernet | None:
         key = settings.PRIVATE_KEY_ENCRYPTION_KEY
         if key is None:
             return None
@@ -47,7 +46,7 @@ class EncryptionService:
             ) from e
 
     @staticmethod
-    def decrypt_optional_private_key(data: Optional[str]) -> Optional[str]:
+    def decrypt_optional_private_key(data: str | None) -> str | None:
         if data is None:
             return None
         return EncryptionService.decrypt_private_key(data)

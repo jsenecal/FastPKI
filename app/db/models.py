@@ -56,9 +56,9 @@ class AuditAction(str, Enum):
 class Organization(SQLModel, table=True):
     __tablename__ = "organizations"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True, unique=True)
-    description: Optional[str] = None
+    description: str | None = None
     created_at: datetime = Field(
         sa_column=Column(
             DateTime(timezone=True),
@@ -80,7 +80,7 @@ class Organization(SQLModel, table=True):
 
 class CertificateAuthorityBase(SQLModel):
     name: str = Field(index=True)
-    description: Optional[str] = None
+    description: str | None = None
     subject_dn: str
     key_size: int
     valid_days: int
@@ -89,7 +89,7 @@ class CertificateAuthorityBase(SQLModel):
 class CertificateAuthority(CertificateAuthorityBase, table=True):
     __tablename__ = "certificate_authorities"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     created_at: datetime = Field(
         sa_column=Column(
             DateTime(timezone=True),
@@ -109,15 +109,15 @@ class CertificateAuthority(CertificateAuthorityBase, table=True):
     private_key: str  # PEM encoded
     certificate: str  # PEM encoded
 
-    organization_id: Optional[int] = Field(default=None, foreign_key="organizations.id")
-    created_by_user_id: Optional[int] = Field(default=None, foreign_key="users.id")
+    organization_id: int | None = Field(default=None, foreign_key="organizations.id")
+    created_by_user_id: int | None = Field(default=None, foreign_key="users.id")
 
-    parent_ca_id: Optional[int] = Field(
+    parent_ca_id: int | None = Field(
         default=None, foreign_key="certificate_authorities.id"
     )
-    path_length: Optional[int] = Field(default=None)
+    path_length: int | None = Field(default=None)
     allow_leaf_certs: bool = Field(default=True)
-    crl_base_url: Optional[str] = Field(default=None)
+    crl_base_url: str | None = Field(default=None)
 
     parent_ca: Optional["CertificateAuthority"] = Relationship(
         back_populates="child_cas",
@@ -145,7 +145,7 @@ class CertificateBase(SQLModel):
 class Certificate(CertificateBase, table=True):
     __tablename__ = "certificates"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     created_at: datetime = Field(
         sa_column=Column(
             DateTime(timezone=True),
@@ -162,7 +162,7 @@ class Certificate(CertificateBase, table=True):
         )
     )
 
-    private_key: Optional[str] = None  # PEM encoded
+    private_key: str | None = None  # PEM encoded
     certificate: str  # PEM encoded
     serial_number: str = Field(index=True)
     not_before: datetime = Field(
@@ -171,23 +171,23 @@ class Certificate(CertificateBase, table=True):
     not_after: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False)
     )
-    revoked_at: Optional[datetime] = Field(
+    revoked_at: datetime | None = Field(
         default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
     )
 
-    issuer_id: Optional[int] = Field(
+    issuer_id: int | None = Field(
         default=None, foreign_key="certificate_authorities.id"
     )
-    issuer: Optional[CertificateAuthority] = Relationship(back_populates="certificates")
+    issuer: CertificateAuthority | None = Relationship(back_populates="certificates")
 
-    organization_id: Optional[int] = Field(default=None, foreign_key="organizations.id")
-    created_by_user_id: Optional[int] = Field(default=None, foreign_key="users.id")
+    organization_id: int | None = Field(default=None, foreign_key="organizations.id")
+    created_by_user_id: int | None = Field(default=None, foreign_key="users.id")
 
 
 class CRLEntry(SQLModel, table=True):
     __tablename__ = "crl_entries"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     created_at: datetime = Field(
         sa_column=Column(
             DateTime(timezone=True),
@@ -200,7 +200,7 @@ class CRLEntry(SQLModel, table=True):
     revocation_date: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False)
     )
-    reason: Optional[str] = None
+    reason: str | None = None
 
     ca_id: int = Field(foreign_key="certificate_authorities.id")
 
@@ -208,7 +208,7 @@ class CRLEntry(SQLModel, table=True):
 class User(SQLModel, table=True):
     __tablename__ = "users"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     username: str = Field(index=True, unique=True)
     email: str = Field(index=True, unique=True)
     hashed_password: str
@@ -236,14 +236,14 @@ class User(SQLModel, table=True):
     can_export_private_key: bool = Field(default=False)
     can_delete_ca: bool = Field(default=False)
 
-    organization_id: Optional[int] = Field(default=None, foreign_key="organizations.id")
-    organization: Optional[Organization] = Relationship(back_populates="users")
+    organization_id: int | None = Field(default=None, foreign_key="organizations.id")
+    organization: Organization | None = Relationship(back_populates="users")
 
 
 class AuditLog(SQLModel, table=True):
     __tablename__ = "audit_logs"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     created_at: datetime = Field(
         sa_column=Column(
             DateTime(timezone=True),
@@ -253,11 +253,11 @@ class AuditLog(SQLModel, table=True):
         )
     )
     action: AuditAction = Field(index=True)
-    user_id: Optional[int] = Field(default=None, foreign_key="users.id", index=True)
-    username: Optional[str] = None
-    organization_id: Optional[int] = Field(
+    user_id: int | None = Field(default=None, foreign_key="users.id", index=True)
+    username: str | None = None
+    organization_id: int | None = Field(
         default=None, foreign_key="organizations.id", index=True
     )
-    resource_type: Optional[str] = None
-    resource_id: Optional[int] = None
-    detail: Optional[str] = None
+    resource_type: str | None = None
+    resource_id: int | None = None
+    detail: str | None = None

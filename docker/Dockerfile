@@ -9,14 +9,18 @@ WORKDIR /app
 RUN pip install uv
 RUN apt-get update && apt-get install -y curl && apt-get clean
 
-# First copy files needed for installation
-COPY pyproject.toml LICENSE README.md ./
+# Copy files needed for dependency resolution
+COPY pyproject.toml uv.lock LICENSE README.md ./
+COPY cli/ cli/
+COPY app/ app/
 
-# Install dependencies (without dev dependencies for the main image)
-RUN uv pip install --system --no-cache-dir -e .
+# Install dependencies (CLI + server, no dev tools)
+RUN uv sync --system --no-dev --group server --no-editable
 
-# Now copy the rest of the application code
-COPY . .
+# Copy remaining application files
+COPY alembic.ini ./
+COPY alembic/ alembic/
+COPY docker/ docker/
 
 # Create a non-root user and switch to it
 RUN adduser --disabled-password --gecos "" app

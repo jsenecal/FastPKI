@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -10,8 +9,8 @@ class CertificateCreate(BaseModel):
     common_name: str
     subject_dn: str
     certificate_type: CertificateType
-    key_size: Optional[int] = None
-    valid_days: Optional[int] = None
+    key_size: int | None = None
+    valid_days: int | None = None
     include_private_key: bool = True
 
 
@@ -29,17 +28,17 @@ class CertificateResponse(BaseModel):
     serial_number: str
     not_before: datetime
     not_after: datetime
-    revoked_at: Optional[datetime] = None
+    revoked_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
     issuer_id: int
-    organization_id: Optional[int] = None
-    created_by_user_id: Optional[int] = None
+    organization_id: int | None = None
+    created_by_user_id: int | None = None
 
 
 class CertificateDetailResponse(CertificateResponse):
-    private_key: Optional[str] = None
+    private_key: str | None = None
 
 
 class CertificateRevoke(BaseModel):
-    reason: Optional[str] = None
+    reason: str | None = None

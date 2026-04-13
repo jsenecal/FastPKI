@@ -1,6 +1,5 @@
 import re
 from datetime import datetime, timedelta
-from typing import Optional
 from zoneinfo import ZoneInfo
 
 from cryptography import x509
@@ -75,16 +74,16 @@ class CAService:
         self,
         name: str,
         subject_dn: str,
-        description: Optional[str] = None,
-        key_size: Optional[int] = None,
-        valid_days: Optional[int] = None,
-        organization_id: Optional[int] = None,
-        created_by_user_id: Optional[int] = None,
-        parent_ca_id: Optional[int] = None,
-        path_length: Optional[int] = None,
-        allow_leaf_certs: Optional[bool] = None,
-        crl_base_url: Optional[str] = None,
-        base_url: Optional[str] = None,
+        description: str | None = None,
+        key_size: int | None = None,
+        valid_days: int | None = None,
+        organization_id: int | None = None,
+        created_by_user_id: int | None = None,
+        parent_ca_id: int | None = None,
+        path_length: int | None = None,
+        allow_leaf_certs: bool | None = None,
+        crl_base_url: str | None = None,
+        base_url: str | None = None,
     ) -> CertificateAuthority:
         """Create a new Certificate Authority (root or intermediate)."""
         key_size = key_size or settings.CA_KEY_SIZE
@@ -104,7 +103,7 @@ class CAService:
         cert_builder = cert_builder.serial_number(x509.random_serial_number())
         cert_builder = cert_builder.public_key(private_key.public_key())
 
-        parent_ca: Optional[CertificateAuthority] = None
+        parent_ca: CertificateAuthority | None = None
         if parent_ca_id is not None:
             # Intermediate CA: signed by parent
             parent_ca = await self.db.get(CertificateAuthority, parent_ca_id)
@@ -141,7 +140,7 @@ class CAService:
                 )
 
             # Calculate effective path_length for the new intermediate
-            effective_path_length: Optional[int]
+            effective_path_length: int | None
             if bc.path_length is not None:
                 max_child_path_length = bc.path_length - 1
                 if path_length is not None:
@@ -275,13 +274,13 @@ class CAService:
 
         return ca
 
-    async def get_ca(self, ca_id: int) -> Optional[CertificateAuthority]:
+    async def get_ca(self, ca_id: int) -> CertificateAuthority | None:
         """Get a Certificate Authority by ID."""
         ca = await self.db.get(CertificateAuthority, ca_id)
         return ca
 
     async def list_cas(
-        self, organization_id: Optional[int] = None
+        self, organization_id: int | None = None
     ) -> list[CertificateAuthority]:
         """List Certificate Authorities, optionally filtered by organization."""
         query = select(CertificateAuthority)
@@ -316,7 +315,7 @@ class CAService:
         Returns an ordered list starting with the given CA and ending at the root.
         """
         chain: list[CertificateAuthority] = []
-        current_id: Optional[int] = ca_id
+        current_id: int | None = ca_id
         while current_id is not None:
             ca = await self.db.get(CertificateAuthority, current_id)
             if not ca:
@@ -360,7 +359,7 @@ class CAService:
             raise ValueError(f"Invalid slug: {slug}") from None  # noqa: TRY003
         return name_part, ca_id
 
-    async def get_ca_by_slug(self, slug: str) -> Optional[CertificateAuthority]:
+    async def get_ca_by_slug(self, slug: str) -> CertificateAuthority | None:
         """Look up a CA by slug, validating the name prefix matches."""
         try:
             name_part, ca_id = CAService.parse_slug(slug)

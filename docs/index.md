@@ -16,6 +16,7 @@ FastPKI lets you create and manage Certificate Authorities, issue certificates, 
 | **Access Control** | Three roles (Superuser, Admin, User), per-user capability flags, organization-scoped ownership |
 | **Security** | JWT authentication, optional private key encryption at rest (Fernet), audit logging |
 | **Database** | SQLite (development) and PostgreSQL (production), Alembic migrations |
+| **CLI Tool** | Full-featured `fastpki` command-line interface, XDG config, table/JSON output |
 | **Deployment** | Docker images on ghcr.io, automatic migrations on container startup |
 
 ## Quick links
@@ -24,4 +25,5 @@ FastPKI lets you create and manage Certificate Authorities, issue certificates, 
 - [First Steps](getting-started/first-steps.md) — create your first CA and issue a certificate
 - [CRL & Public PKI](guides/crl.md) — CRL generation and public certificate/CRL download endpoints
 - [API Reference](reference/api.md) — complete endpoint documentation
+- [CLI Tool](guides/cli.md) — manage PKI from the command line
 - [Docker Deployment](deployment/docker.md) — container-based deployment

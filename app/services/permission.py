@@ -1,5 +1,3 @@
-from typing import Optional
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
@@ -51,8 +49,8 @@ class PermissionService:
     @staticmethod
     def _user_can_perform(
         user: User,
-        resource_org_id: Optional[int],
-        resource_creator_id: Optional[int],
+        resource_org_id: int | None,
+        resource_creator_id: int | None,
         action: PermissionAction,
     ) -> bool:
         # 1. SUPERUSER -> always allowed

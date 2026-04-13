@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from typing import Optional
 from zoneinfo import ZoneInfo
 
 from cryptography import x509
@@ -33,12 +32,12 @@ class CertificateService:
         common_name: str,
         subject_dn: str,
         certificate_type: CertificateType,
-        key_size: Optional[int] = None,
-        valid_days: Optional[int] = None,
+        key_size: int | None = None,
+        valid_days: int | None = None,
         include_private_key: bool = True,
-        organization_id: Optional[int] = None,
-        created_by_user_id: Optional[int] = None,
-        base_url: Optional[str] = None,
+        organization_id: int | None = None,
+        created_by_user_id: int | None = None,
+        base_url: str | None = None,
     ) -> Certificate:
         """Create a new certificate signed by the specified CA."""
         key_size = key_size or settings.CERT_KEY_SIZE
@@ -209,15 +208,15 @@ class CertificateService:
 
         return cert
 
-    async def get_certificate(self, cert_id: int) -> Optional[Certificate]:
+    async def get_certificate(self, cert_id: int) -> Certificate | None:
         """Get a certificate by ID."""
         cert = await self.db.get(Certificate, cert_id)
         return cert
 
     async def list_certificates(
         self,
-        ca_id: Optional[int] = None,
-        organization_id: Optional[int] = None,
+        ca_id: int | None = None,
+        organization_id: int | None = None,
     ) -> list[Certificate]:
         """List certificates, optionally filtered by CA ID and/or organization."""
         query = select(Certificate)
@@ -229,8 +228,8 @@ class CertificateService:
         return list(result.scalars().all())
 
     async def revoke_certificate(
-        self, cert_id: int, reason: Optional[str] = None
-    ) -> Optional[Certificate]:
+        self, cert_id: int, reason: str | None = None
+    ) -> Certificate | None:
         """Revoke a certificate by ID."""
         cert = await self.db.get(Certificate, cert_id)
 

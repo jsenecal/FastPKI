@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
@@ -14,12 +13,12 @@ class AuditService:
     async def log_action(
         self,
         action: AuditAction,
-        user_id: Optional[int] = None,
-        username: Optional[str] = None,
-        organization_id: Optional[int] = None,
-        resource_type: Optional[str] = None,
-        resource_id: Optional[int] = None,
-        detail: Optional[str] = None,
+        user_id: int | None = None,
+        username: str | None = None,
+        organization_id: int | None = None,
+        resource_type: str | None = None,
+        resource_id: int | None = None,
+        detail: str | None = None,
     ) -> AuditLog:
         entry = AuditLog(
             action=action,
@@ -37,13 +36,13 @@ class AuditService:
 
     async def list_audit_logs(
         self,
-        action: Optional[AuditAction] = None,
-        user_id: Optional[int] = None,
-        organization_id: Optional[int] = None,
-        resource_type: Optional[str] = None,
-        resource_id: Optional[int] = None,
-        since: Optional[datetime] = None,
-        until: Optional[datetime] = None,
+        action: AuditAction | None = None,
+        user_id: int | None = None,
+        organization_id: int | None = None,
+        resource_type: str | None = None,
+        resource_id: int | None = None,
+        since: datetime | None = None,
+        until: datetime | None = None,
         skip: int = 0,
         limit: int = 100,
     ) -> list[AuditLog]:

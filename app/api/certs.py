@@ -1,5 +1,3 @@
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -92,7 +90,7 @@ async def create_certificate(
 
 @router.get("/", response_model=list[CertificateResponse])
 async def read_certificates(
-    ca_id: Optional[int] = Query(None, description="Filter by CA ID"),
+    ca_id: int | None = Query(None, description="Filter by CA ID"),
     db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> list[CertificateResponse]:

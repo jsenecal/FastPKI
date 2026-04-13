@@ -3,7 +3,6 @@ import logging
 import os
 from collections.abc import AsyncGenerator
 from datetime import timedelta
-from typing import Optional
 
 import pytest_asyncio
 from fastapi import FastAPI
@@ -228,10 +227,10 @@ async def normal_user_token_headers(normal_user_token) -> dict:
 
 # Override authentication for tests
 class TestAuth:
-    def __init__(self, user: Optional[User] = None):
+    def __init__(self, user: User | None = None):
         self.user = user
 
-    async def __call__(self) -> Optional[User]:
+    async def __call__(self) -> User | None:
         return self.user
 
 
@@ -239,7 +238,7 @@ class TestAuth:
 def auth_override_app():
     """Return a function that creates an app with auth override."""
 
-    def _auth_override_app(user: Optional[User] = None):
+    def _auth_override_app(user: User | None = None):
         app = create_test_app()
 
         # Override the dependency

@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -21,11 +21,11 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "FastPKI"
 
     # Database settings
-    DATABASE_URL: Optional[str] = "sqlite+aiosqlite:///./fastpki.db"
+    DATABASE_URL: str | None = "sqlite+aiosqlite:///./fastpki.db"
     DATABASE_CONNECT_ARGS: dict[str, Any] = {}
 
     @field_validator("DATABASE_URL")
-    def validate_database_url(cls, v: Optional[str]) -> Any:  # noqa: N805
+    def validate_database_url(cls, v: str | None) -> Any:  # noqa: N805
         if v and v.startswith("sqlite"):
             if not v.startswith("sqlite+aiosqlite"):
                 return v.replace("sqlite", "sqlite+aiosqlite")
@@ -60,10 +60,10 @@ class Settings(BaseSettings):
         return v
 
     # Private key encryption
-    PRIVATE_KEY_ENCRYPTION_KEY: Optional[str] = None
+    PRIVATE_KEY_ENCRYPTION_KEY: str | None = None
 
     @field_validator("PRIVATE_KEY_ENCRYPTION_KEY")
-    def validate_encryption_key(cls, v: Optional[str]) -> Optional[str]:  # noqa: N805
+    def validate_encryption_key(cls, v: str | None) -> str | None:  # noqa: N805
         if v is None:
             return v
         from cryptography.fernet import Fernet

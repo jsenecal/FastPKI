@@ -4,7 +4,7 @@
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.10+
 - [uv](https://github.com/astral-sh/uv) (recommended) or pip
 
 ### Steps
@@ -32,6 +32,29 @@ uvicorn app.main:app --reload
 ```
 
 The API is now available at `http://localhost:8000`. Interactive docs are at `http://localhost:8000/api/v1/docs`.
+
+## CLI Tool
+
+The FastPKI CLI is published on PyPI as a standalone client. It does not require the server code — just install and point it at a running FastPKI instance:
+
+```bash
+# Install from PyPI
+pip install fastpki
+# or
+uv tool install fastpki
+
+# Configure the server
+fastpki config set server.url http://localhost:8000
+
+# Login
+fastpki auth login -u admin -p securepassword
+
+# Use it
+fastpki ca list
+fastpki cert list -o json
+```
+
+See the [CLI guide](../guides/cli.md) for full documentation.
 
 ## Docker — Development
 

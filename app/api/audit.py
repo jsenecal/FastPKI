@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,12 +14,12 @@ router = APIRouter()
 
 @router.get("/", response_model=list[AuditLogResponse])
 async def list_audit_logs(
-    action: Optional[AuditAction] = Query(None),  # noqa: B008
-    user_id: Optional[int] = Query(None),
-    resource_type: Optional[str] = Query(None),
-    resource_id: Optional[int] = Query(None),
-    since: Optional[datetime] = Query(None),  # noqa: B008
-    until: Optional[datetime] = Query(None),  # noqa: B008
+    action: AuditAction | None = Query(None),  # noqa: B008
+    user_id: int | None = Query(None),
+    resource_type: str | None = Query(None),
+    resource_id: int | None = Query(None),
+    since: datetime | None = Query(None),  # noqa: B008
+    until: datetime | None = Query(None),  # noqa: B008
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     db: AsyncSession = Depends(get_session),  # noqa: B008
@@ -34,7 +33,7 @@ async def list_audit_logs(
 
     audit_service = AuditService(db)
 
-    organization_id: Optional[int] = None
+    organization_id: int | None = None
     if current_user.role == UserRole.ADMIN:
         organization_id = current_user.organization_id
 

@@ -1,5 +1,3 @@
-from typing import Optional
-
 # mypy: disable-error-code="arg-type"
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,7 +24,7 @@ class OrganizationService:
         self.db = db
 
     async def create_organization(
-        self, name: str, description: Optional[str] = None
+        self, name: str, description: str | None = None
     ) -> Organization:
         """Create a new organization."""
         exists = await self.get_organization_by_name(name)
@@ -43,13 +41,13 @@ class OrganizationService:
         await self.db.refresh(org)
         return org
 
-    async def get_organization_by_id(self, org_id: int) -> Optional[Organization]:
+    async def get_organization_by_id(self, org_id: int) -> Organization | None:
         """Get an organization by ID."""
         query = select(Organization).where(Organization.id == org_id)
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
-    async def get_organization_by_name(self, name: str) -> Optional[Organization]:
+    async def get_organization_by_name(self, name: str) -> Organization | None:
         """Get an organization by name."""
         query = select(Organization).where(Organization.name == name)
         result = await self.db.execute(query)
@@ -64,8 +62,8 @@ class OrganizationService:
     async def update_organization(
         self,
         org_id: int,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: str | None = None,
+        description: str | None = None,
     ) -> Organization:
         """Update an organization."""
         org = await self.get_organization_by_id(org_id)
@@ -101,7 +99,7 @@ class OrganizationService:
         return True
 
     async def add_user_to_organization(
-        self, user_id: int, org_id: int, admin_user_id: Optional[int] = None
+        self, user_id: int, org_id: int, admin_user_id: int | None = None
     ) -> User:
         """Add a user to an organization."""
         org = await self.get_organization_by_id(org_id)
@@ -130,7 +128,7 @@ class OrganizationService:
         return user
 
     async def remove_user_from_organization(
-        self, user_id: int, admin_user_id: Optional[int] = None
+        self, user_id: int, admin_user_id: int | None = None
     ) -> User:
         """Remove a user from their organization."""
         query = select(User).where(User.id == user_id)

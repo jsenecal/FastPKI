@@ -1,19 +1,18 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, computed_field
 
 
 class CACreate(BaseModel):
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     subject_dn: str
-    key_size: Optional[int] = None
-    valid_days: Optional[int] = None
-    parent_ca_id: Optional[int] = None
-    path_length: Optional[int] = None
-    allow_leaf_certs: Optional[bool] = None
-    crl_base_url: Optional[str] = None
+    key_size: int | None = None
+    valid_days: int | None = None
+    parent_ca_id: int | None = None
+    path_length: int | None = None
+    allow_leaf_certs: bool | None = None
+    crl_base_url: str | None = None
 
 
 class CAResponse(BaseModel):
@@ -21,19 +20,19 @@ class CAResponse(BaseModel):
 
     id: int
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     subject_dn: str
     key_size: int
     valid_days: int
     created_at: datetime
     updated_at: datetime
     certificate: str
-    organization_id: Optional[int] = None
-    created_by_user_id: Optional[int] = None
-    parent_ca_id: Optional[int] = None
-    path_length: Optional[int] = None
+    organization_id: int | None = None
+    created_by_user_id: int | None = None
+    parent_ca_id: int | None = None
+    path_length: int | None = None
     allow_leaf_certs: bool
-    crl_base_url: Optional[str] = None
+    crl_base_url: str | None = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property

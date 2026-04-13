@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, EmailStr, field_validator
 
@@ -9,9 +8,9 @@ from app.db.models import UserRole
 class UserBase(BaseModel):
     username: str
     email: EmailStr
-    role: Optional[UserRole] = UserRole.USER
-    is_active: Optional[bool] = True
-    organization_id: Optional[int] = None
+    role: UserRole | None = UserRole.USER
+    is_active: bool | None = True
+    organization_id: int | None = None
     can_create_ca: bool = False
     can_create_cert: bool = False
     can_revoke_cert: bool = False
@@ -31,20 +30,20 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
-    password: Optional[str] = None
-    role: Optional[UserRole] = None
-    is_active: Optional[bool] = None
-    organization_id: Optional[int] = None
-    can_create_ca: Optional[bool] = None
-    can_create_cert: Optional[bool] = None
-    can_revoke_cert: Optional[bool] = None
-    can_export_private_key: Optional[bool] = None
-    can_delete_ca: Optional[bool] = None
+    email: EmailStr | None = None
+    password: str | None = None
+    role: UserRole | None = None
+    is_active: bool | None = None
+    organization_id: int | None = None
+    can_create_ca: bool | None = None
+    can_create_cert: bool | None = None
+    can_revoke_cert: bool | None = None
+    can_export_private_key: bool | None = None
+    can_delete_ca: bool | None = None
 
     @field_validator("password")
     @classmethod
-    def password_min_length(cls, v: Optional[str]) -> Optional[str]:
+    def password_min_length(cls, v: str | None) -> str | None:
         if v is not None and len(v) < 8:
             raise ValueError("Min 8 chars")  # noqa: TRY003
         return v
@@ -72,7 +71,7 @@ class Token(BaseModel):
 
 
 class TokenPayload(BaseModel):
-    sub: Optional[str] = None
-    id: Optional[int] = None
-    role: Optional[str] = None
-    exp: Optional[int] = None
+    sub: str | None = None
+    id: int | None = None
+    role: str | None = None
+    exp: int | None = None

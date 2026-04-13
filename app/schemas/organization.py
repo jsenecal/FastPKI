@@ -1,12 +1,11 @@
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel, field_validator
 
 
 class OrganizationBase(BaseModel):
     name: str
-    description: Optional[str] = None
+    description: str | None = None
 
 
 class OrganizationCreate(OrganizationBase):
@@ -19,12 +18,12 @@ class OrganizationCreate(OrganizationBase):
 
 
 class OrganizationUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: str | None = None
+    description: str | None = None
 
     @field_validator("name")
     @classmethod
-    def name_must_not_be_empty(cls, v: Optional[str]) -> Optional[str]:
+    def name_must_not_be_empty(cls, v: str | None) -> str | None:
         if v is not None and not v.strip():
             raise ValueError("Organization name must not be empty")  # noqa: TRY003
         return v

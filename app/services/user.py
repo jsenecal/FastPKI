@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import bcrypt
@@ -27,15 +27,15 @@ class UserService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_user_by_id(self, user_id: int) -> Optional[User]:
+    async def get_user_by_id(self, user_id: int) -> User | None:
         result = await self.db.execute(select(User).where(User.id == user_id))
         return result.scalar_one_or_none()
 
-    async def get_user_by_username(self, username: str) -> Optional[User]:
+    async def get_user_by_username(self, username: str) -> User | None:
         result = await self.db.execute(select(User).where(User.username == username))
         return result.scalar_one_or_none()
 
-    async def get_user_by_email(self, email: str) -> Optional[User]:
+    async def get_user_by_email(self, email: str) -> User | None:
         result = await self.db.execute(select(User).where(User.email == email))
         return result.scalar_one_or_none()
 
@@ -45,7 +45,7 @@ class UserService:
         email: str,
         password: str,
         role: UserRole = UserRole.USER,
-        organization_id: Optional[int] = None,
+        organization_id: int | None = None,
         can_create_ca: bool = False,
         can_create_cert: bool = False,
         can_revoke_cert: bool = False,
@@ -78,17 +78,17 @@ class UserService:
     async def update_user(
         self,
         user_id: int,
-        email: Optional[str] = None,
-        password: Optional[str] = None,
-        role: Optional[UserRole] = None,
-        is_active: Optional[bool] = None,
-        organization_id: Optional[int] = None,
-        can_create_ca: Optional[bool] = None,
-        can_create_cert: Optional[bool] = None,
-        can_revoke_cert: Optional[bool] = None,
-        can_export_private_key: Optional[bool] = None,
-        can_delete_ca: Optional[bool] = None,
-    ) -> Optional[User]:
+        email: str | None = None,
+        password: str | None = None,
+        role: UserRole | None = None,
+        is_active: bool | None = None,
+        organization_id: int | None = None,
+        can_create_ca: bool | None = None,
+        can_create_cert: bool | None = None,
+        can_revoke_cert: bool | None = None,
+        can_export_private_key: bool | None = None,
+        can_delete_ca: bool | None = None,
+    ) -> User | None:
         user = await self.get_user_by_id(user_id)
 
         if not user:
@@ -141,7 +141,7 @@ class UserService:
 
         return True
 
-    async def authenticate_user(self, username: str, password: str) -> Optional[User]:
+    async def authenticate_user(self, username: str, password: str) -> User | None:
         logger.debug("Authenticating user: %s", username)
         user = await self.get_user_by_username(username)
 
@@ -161,7 +161,7 @@ class UserService:
         return user
 
     def create_access_token(
-        self, data: dict[str, Any], expires_delta: Optional[timedelta] = None
+        self, data: dict[str, Any], expires_delta: timedelta | None = None
     ) -> str:
         to_encode = data.copy()
 

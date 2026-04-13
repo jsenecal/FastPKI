@@ -8,13 +8,15 @@ FastPKI is an API-based PKI management system that provides an easier alternativ
 
 ## Directory Structure
 
-- `/app`: Main application code
+- `/app`: Main application code (web API)
   - `/api`: API endpoints
   - `/core`: Core configuration
   - `/db`: Database models and session management
   - `/schemas`: Pydantic schemas for API requests/responses
   - `/services`: Business logic services
+- `/cli`: CLI tool (`pip install fastpki[cli]`)
 - `/tests`: Test suite
+- `/docs`: Documentation (built with Zensical)
 - `/docker`: Docker configuration
 - `/data`: SQLite database files and other persistent data
 
@@ -69,7 +71,7 @@ docker-compose -f docker/docker-compose.yml -f docker/docker-compose.prod.yml up
 ## Type Checking Guidelines
 
 - All function definitions should have proper type annotations
-- Use appropriate types from typing module (List, Dict, Optional, etc.)
+- Use `X | None` syntax instead of `Optional[X]` (Python 3.10+)
 - All class attributes should be properly typed
 - Use SQLModel typing conventions for database models
 
@@ -100,7 +102,7 @@ The application supports both SQLite and PostgreSQL:
 - Use pytest for all tests
 - Test coverage should be maintained above 80%
 - Tests are in the `/tests` directory
-- Tests need to be run within the virtual environment or otherwise will fail due to missing dependencies 
+- Tests need to be run within the virtual environment or otherwise will fail due to missing dependencies
 
 ## Git Commits
 
@@ -123,3 +125,20 @@ pytest tests/test_new_feature.py -v
 # Refactor as needed while keeping tests passing
 pytest -v
 ```
+
+## Release Checklist
+
+Before tagging a release, verify the following:
+
+- [ ] All tests pass (`pytest`)
+- [ ] Linting and type checks pass (`ruff check app cli tests && mypy app cli`)
+- [ ] **CLI conforms to the API** — every API endpoint in `app/api/` has a corresponding CLI command in `cli/`. If an endpoint was added, modified, or removed, update the CLI to match.
+- [ ] **Documentation is up-to-date** — any new or changed features, endpoints, configuration options, or CLI commands are reflected in `docs/`. Key files to check:
+  - `docs/reference/api.md` — API endpoint reference
+  - `docs/reference/configuration.md` — environment variables
+  - `docs/reference/models.md` — data model fields
+  - `docs/guides/` — user-facing guides for new features
+  - `docs/security/authentication.md` — auth-related changes
+  - `zensical.toml` — navigation updated if new pages were added
+- [ ] Documentation builds successfully (`zensical build`)
+- [ ] Version bumped (`bumpver update --patch|--minor|--major`)
