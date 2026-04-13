@@ -4,9 +4,11 @@ FastPKI ships with Docker Compose configurations for both development and produc
 
 ## Dockerfile
 
-The image is based on `python:3.11-slim` and uses `uv` for dependency installation. It runs the application as a non-root `app` user.
+The image is based on `python:3.14-slim` and uses `uv` for dependency installation. It runs the application as a non-root `app` user.
 
 The Dockerfile accepts a `VERSION` build argument that sets the `org.opencontainers.image.version` OCI label for image introspection.
+
+An entrypoint script runs `alembic upgrade head` before starting the application, ensuring database migrations are applied automatically on every deployment.
 
 ```
 docker/Dockerfile

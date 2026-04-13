@@ -1,0 +1,106 @@
+[project]
+site_name = "FastPKI"
+site_description = "API-based PKI management system — an easier alternative to Easy-RSA"
+site_url = "https://jsenecal.github.io/fastpki/"
+repo_url = "https://github.com/jsenecal/fastpki"
+repo_name = "GitHub"
+copyright = "Copyright &copy; 2025 Jonathan Senecal"
+
+nav = [
+  { "Home" = "index.md" },
+  { "Getting Started" = [
+    { "Installation" = "getting-started/installation.md" },
+    { "Configuration" = "getting-started/configuration.md" },
+    { "First Steps" = "getting-started/first-steps.md" },
+  ] },
+  { "User Guide" = [
+    { "Certificate Authorities" = "guides/certificate-authorities.md" },
+    { "Certificates" = "guides/certificates.md" },
+    { "CRL & Public PKI" = "guides/crl.md" },
+    { "Exporting" = "guides/exporting.md" },
+    { "Organizations" = "guides/organizations.md" },
+    { "Users" = "guides/users.md" },
+    { "Audit Logs" = "guides/audit-logs.md" },
+  ] },
+  { "Security" = [
+    { "Authentication" = "security/authentication.md" },
+    { "Authorization" = "security/authorization.md" },
+    { "Encryption at Rest" = "security/encryption.md" },
+  ] },
+  { "Deployment" = [
+    { "Docker" = "deployment/docker.md" },
+    { "Production" = "deployment/production.md" },
+  ] },
+  { "Development" = [
+    { "Contributing" = "development/contributing.md" },
+    { "Versioning" = "development/versioning.md" },
+  ] },
+  { "Reference" = [
+    { "API Endpoints" = "reference/api.md" },
+    { "Configuration" = "reference/configuration.md" },
+    { "Models" = "reference/models.md" },
+  ] },
+]
+
+[project.theme]
+language = "en"
+
+features = [
+  "content.code.copy",
+  "content.code.select",
+  "content.tabs.link",
+  "navigation.footer",
+  "navigation.instant",
+  "navigation.instant.prefetch",
+  "navigation.sections",
+  "navigation.top",
+  "navigation.tracking",
+  "search.highlight",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+toggle.icon = "material/brightness-auto"
+toggle.name = "Switch to light mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "indigo"
+accent = "indigo"
+toggle.icon = "material/brightness-7"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "indigo"
+accent = "indigo"
+toggle.icon = "material/brightness-4"
+toggle.name = "Switch to system preference"
+
+[project.theme.font]
+text = "Inter"
+code = "JetBrains Mono"
+
+[project.theme.icon]
+repo = "fontawesome/brands/github"
+
+[project.markdown_extensions.admonition]
+
+[project.markdown_extensions.pymdownx.details]
+
+[project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+
+[project.markdown_extensions.pymdownx.superfences]
+
+[project.markdown_extensions.pymdownx.tabbed]
+alternate_style = true
+
+[project.markdown_extensions.toc]
+permalink = true
+
+[project.markdown_extensions.tables]
+
+[project.markdown_extensions.attr_list]

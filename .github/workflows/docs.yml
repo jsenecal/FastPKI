@@ -6,7 +6,7 @@ on:
       - master
     paths:
       - 'docs/**'
-      - 'mkdocs.yml'
+      - 'zensical.toml'
   workflow_dispatch:
 
 permissions:
@@ -24,15 +24,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+      - uses: astral-sh/setup-uv@v6
 
-      - name: Install mkdocs-material
-        run: pip install mkdocs-material
+      - name: Install Zensical
+        run: uv tool install zensical
 
       - name: Build documentation
-        run: mkdocs build --strict
+        run: zensical build
 
       - uses: actions/upload-pages-artifact@v3
         with:

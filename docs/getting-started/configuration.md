@@ -17,6 +17,7 @@ FastPKI is configured through environment variables. You can set them in a `.env
 | `PRIVATE_KEY_ENCRYPTION_KEY` | `str` or `null` | `null` | Fernet key for encrypting private keys at rest. See [Encryption at Rest](../security/encryption.md). |
 | `LOG_LEVEL` | `str` | `INFO` | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`). |
 | `BACKEND_CORS_ORIGINS` | `list[str]` | `["*"]` | Allowed CORS origins. |
+| `ALLOW_UNAUTHENTICATED_REGISTRATION` | `bool` | `false` | Allow unauthenticated user registration. First user bootstrap always works. |
 | `API_V1_STR` | `str` | `/api/v1` | URL prefix for all API routes. |
 | `PROJECT_NAME` | `str` | `FastPKI` | Name shown in the OpenAPI docs title. |
 

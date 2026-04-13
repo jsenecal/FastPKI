@@ -106,6 +106,7 @@ This page documents the database models and enumerations used by FastPKI.
 | `parent_ca_id` | `int` | FK → `certificate_authorities.id`, nullable | Parent CA (null for root CAs) |
 | `path_length` | `int` | Nullable | BasicConstraints path length constraint |
 | `allow_leaf_certs` | `bool` | Default `true` | Whether this CA can issue leaf certificates |
+| `crl_base_url` | `str` | Nullable | Override base URL for CDP/AIA extensions in issued certificates |
 | `created_at` | `datetime` | — | Creation timestamp (UTC) |
 | `updated_at` | `datetime` | — | Last update timestamp (UTC) |
 

@@ -20,6 +20,7 @@ All settings are configured via environment variables and can be placed in a `.e
 | `PRIVATE_KEY_ENCRYPTION_KEY` | `str` or `null` | `null` | Must be a valid Fernet key if set | Encryption key for private keys at rest |
 | `LOG_LEVEL` | `str` | `INFO` | One of `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` | Application log level |
 | `BACKEND_CORS_ORIGINS` | `list[str]` | `["*"]` | — | Allowed CORS origins |
+| `ALLOW_UNAUTHENTICATED_REGISTRATION` | `bool` | `false` | — | Allow unauthenticated user registration. First user bootstrap always works regardless. |
 
 ## Database URL Auto-Conversion
 

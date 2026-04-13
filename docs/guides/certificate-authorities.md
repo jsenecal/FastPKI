@@ -27,6 +27,7 @@ curl -s -X POST http://localhost:8000/api/v1/cas/ \
 | `parent_ca_id` | No | `null` | ID of parent CA (creates an intermediate CA) |
 | `path_length` | No | `null` | BasicConstraints path length (limits sub-CA depth) |
 | `allow_leaf_certs` | No | `null` | Whether this CA can issue leaf certificates (auto-managed) |
+| `crl_base_url` | No | `null` | Override base URL for CDP/AIA extensions in issued certificates. Defaults to the request domain. |
 
 The response is a `CADetailResponse` that includes the private key. This is the only time the private key is returned automatically — subsequent reads require explicit private key access.
 

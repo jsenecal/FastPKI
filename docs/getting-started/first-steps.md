@@ -139,5 +139,6 @@ This downloads the certificate as `certificate_1.pem`. You can also export the p
 ## Next Steps
 
 - [Certificate Authorities guide](../guides/certificate-authorities.md) — managing CAs in depth
+- [CRL & Public PKI](../guides/crl.md) — CRL generation and public download endpoints
 - [Organizations guide](../guides/organizations.md) — setting up multi-tenant access
 - [Security overview](../security/authentication.md) — understanding tokens, roles, and permissions

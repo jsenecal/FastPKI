@@ -69,12 +69,15 @@ The JWT payload contains:
 
 ## Unauthenticated Endpoints
 
-Only two operations can be performed without a token:
+The following operations can be performed without a token:
 
 1. **`POST /api/v1/auth/token`** — login
-2. **`POST /api/v1/users/`** — create the first user (bootstrap) or create regular users
+2. **`POST /api/v1/users/`** — create the first user (bootstrap only, by default)
+3. **`GET /crl/{slug}`** and **`GET /ca/{slug}.crt`** — public PKI endpoints (CRL and CA certificate downloads)
 
-All other endpoints require a valid bearer token.
+By default, unauthenticated user registration is **disabled** after the first user is created. Set `ALLOW_UNAUTHENTICATED_REGISTRATION=true` to allow unauthenticated creation of regular user accounts. Superuser and admin accounts always require authentication.
+
+All other API endpoints require a valid bearer token.
 
 ## Failed Login Attempts
 

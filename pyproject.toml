@@ -38,7 +38,7 @@ dev = [
     "ruff>=0.14.14",
     "mypy>=1.5.0",
     "types-cryptography>=3.3.23.2",
-    "mkdocs-material>=9.5.0",
+    "zensical>=0.1.0",
     "bumpver>=2023.1129",
 ]
 

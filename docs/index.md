@@ -2,27 +2,26 @@
 
 **API-based PKI management system — an easier alternative to Easy-RSA.**
 
-FastPKI lets you create and manage Certificate Authorities, issue certificates, and revoke them through a RESTful API. It is built with FastAPI, SQLModel, and the Python `cryptography` library.
+FastPKI lets you create and manage Certificate Authorities, issue certificates, and revoke them through a RESTful API. It supports full CA hierarchies, CRL generation, organization-based multi-tenancy, and role-based access control.
 
-## Feature Highlights
+---
 
-- **Certificate Authority management** — create, list, view, export, and delete CAs
-- **Certificate lifecycle** — issue server and client certificates, revoke them, export PEM files and full chains
-- **Multi-tenant organizations** — scope CAs and certificates to organizations with per-org user membership
-- **Role-based access control** — three roles (Superuser, Admin, User) with a clear permission hierarchy
-- **Per-user capability flags** — grant individual write permissions to regular users without promoting them
-- **Audit logging** — immutable log of every security-sensitive action, filterable by action, user, date, and resource
-- **Private key encryption at rest** — optional Fernet encryption for all stored private keys
-- **Dual database support** — SQLite for development, PostgreSQL for production
-- **Docker-ready** — development and production Docker Compose configurations included
+## Features
 
-## Quick Links
+| Category | Details |
+|----------|---------|
+| **Certificate Authorities** | Root and intermediate CAs, path length constraints, chain of trust |
+| **Certificates** | Server, client, and CA certificates with configurable key sizes and validity |
+| **CRL & Public PKI** | CRL generation, public `/crl/` and `/ca/` download endpoints, CDP/AIA extensions embedded in certificates |
+| **Access Control** | Three roles (Superuser, Admin, User), per-user capability flags, organization-scoped ownership |
+| **Security** | JWT authentication, optional private key encryption at rest (Fernet), audit logging |
+| **Database** | SQLite (development) and PostgreSQL (production), Alembic migrations |
+| **Deployment** | Docker images on ghcr.io, automatic migrations on container startup |
 
-| Topic | Description |
-|-------|-------------|
-| [Installation](getting-started/installation.md) | Set up FastPKI locally or with Docker |
-| [First Steps](getting-started/first-steps.md) | End-to-end walkthrough: create a superuser, login, create a CA, issue a certificate |
-| [Configuration](getting-started/configuration.md) | All environment variables with types and defaults |
-| [API Reference](reference/api.md) | Complete endpoint reference with methods, request bodies, and auth requirements |
-| [Security](security/authentication.md) | Authentication, authorization, and encryption details |
-| [Deployment](deployment/production.md) | Production deployment checklist |
+## Quick links
+
+- [Installation](getting-started/installation.md) — get FastPKI running locally or in Docker
+- [First Steps](getting-started/first-steps.md) — create your first CA and issue a certificate
+- [CRL & Public PKI](guides/crl.md) — CRL generation and public certificate/CRL download endpoints
+- [API Reference](reference/api.md) — complete endpoint documentation
+- [Docker Deployment](deployment/docker.md) — container-based deployment

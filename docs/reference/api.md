@@ -401,3 +401,37 @@ Query audit logs.
 | `limit` | `int` | `100` | Max results (1–1000) |
 
 **Response** `200`: Array of audit log objects. **Errors:** `403`.
+
+---
+
+## Public PKI Endpoints
+
+These endpoints are mounted at the application root (not under `/api/v1/`) and require no authentication. The `{slug}` format is `{name-slug}-{id}` (e.g. `my-root-ca-3`). Both the name prefix and ID are validated.
+
+### `GET /crl/{slug}`
+
+Download the CRL for a CA in DER format.
+
+- **Auth required:** None
+- **Content-Type:** `application/pkix-crl`
+
+### `GET /crl/{slug}.pem`
+
+Download the CRL for a CA in PEM format.
+
+- **Auth required:** None
+- **Content-Type:** `application/x-pem-file`
+
+### `GET /ca/{slug}.crt`
+
+Download a CA certificate in DER format.
+
+- **Auth required:** None
+- **Content-Type:** `application/pkix-cert`
+
+### `GET /ca/{slug}.pem`
+
+Download a CA certificate in PEM format.
+
+- **Auth required:** None
+- **Content-Type:** `application/x-pem-file`
