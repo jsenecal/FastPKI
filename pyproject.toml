@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fastpki"
-version = "0.1.0"
+version = "0.2.1"
 description = "CLI client for FastPKI — API-based PKI management"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -149,7 +149,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 
 [tool.bumpver]
-current_version = "v0.1.0"
+current_version = "v0.2.1"
 version_pattern = "vMAJOR.MINOR.PATCH"
 commit_message = "release: Bump version {old_version} -> {new_version}"
 commit = true

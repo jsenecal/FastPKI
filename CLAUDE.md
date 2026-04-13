@@ -141,4 +141,4 @@ Before tagging a release, verify the following:
   - `docs/security/authentication.md` — auth-related changes
   - `zensical.toml` — navigation updated if new pages were added
 - [ ] Documentation builds successfully (`zensical build`)
-- [ ] Version bumped (`bumpver update --patch|--minor|--major`)
+- [ ] Version bumped (`bumpver update --patch|--minor|--major`) — updates `version` in `pyproject.toml` and the `current_version` in `[tool.bumpver]`, commits and tags
