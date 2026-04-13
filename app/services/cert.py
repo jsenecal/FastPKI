@@ -38,6 +38,7 @@ class CertificateService:
         include_private_key: bool = True,
         organization_id: Optional[int] = None,
         created_by_user_id: Optional[int] = None,
+        base_url: Optional[str] = None,
     ) -> Certificate:
         """Create a new certificate signed by the specified CA."""
         key_size = key_size or settings.CERT_KEY_SIZE
@@ -142,6 +143,34 @@ class CertificateService:
             ),
             critical=False,
         )
+
+        # Add CDP and AIA extensions pointing to issuing CA's public URLs
+        if base_url is not None:
+            ca_urls = CAService.get_public_urls(ca, base_url)
+            cert_builder = cert_builder.add_extension(
+                x509.CRLDistributionPoints(
+                    [
+                        x509.DistributionPoint(
+                            full_name=[x509.UniformResourceIdentifier(ca_urls["crl"])],
+                            relative_name=None,
+                            crl_issuer=None,
+                            reasons=None,
+                        )
+                    ]
+                ),
+                critical=False,
+            )
+            cert_builder = cert_builder.add_extension(
+                x509.AuthorityInformationAccess(
+                    [
+                        x509.AccessDescription(
+                            x509.oid.AuthorityInformationAccessOID.CA_ISSUERS,
+                            x509.UniformResourceIdentifier(ca_urls["ca_cert"]),
+                        )
+                    ]
+                ),
+                critical=False,
+            )
 
         # Sign the certificate
         certificate = cert_builder.sign(

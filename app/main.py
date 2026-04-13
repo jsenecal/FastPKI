@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import api_router
+from app.api.pki import ca_router, crl_router
 from app.core.config import settings
 from app.db.session import create_db_and_tables
 from app.services.encryption import encrypt_existing_keys
@@ -34,6 +35,8 @@ if settings.BACKEND_CORS_ORIGINS:
     )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(crl_router, prefix="/crl", tags=["pki"])
+app.include_router(ca_router, prefix="/ca", tags=["pki"])
 
 
 @app.get("/")

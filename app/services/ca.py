@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from app.core.config import settings
-from app.db.models import CertificateAuthority
+from app.db.models import CertificateAuthority, CRLEntry
 from app.services.encryption import EncryptionService
 from app.services.exceptions import HasDependentsError
 
@@ -83,6 +83,8 @@ class CAService:
         parent_ca_id: Optional[int] = None,
         path_length: Optional[int] = None,
         allow_leaf_certs: Optional[bool] = None,
+        crl_base_url: Optional[str] = None,
+        base_url: Optional[str] = None,
     ) -> CertificateAuthority:
         """Create a new Certificate Authority (root or intermediate)."""
         key_size = key_size or settings.CA_KEY_SIZE
@@ -199,6 +201,36 @@ class CAService:
                 critical=False,
             )
 
+            # Add CDP and AIA extensions pointing to parent CA's public URLs
+            if base_url is not None and parent_ca is not None:
+                parent_urls = CAService.get_public_urls(parent_ca, base_url)
+                cert_builder = cert_builder.add_extension(
+                    x509.CRLDistributionPoints(
+                        [
+                            x509.DistributionPoint(
+                                full_name=[
+                                    x509.UniformResourceIdentifier(parent_urls["crl"])
+                                ],
+                                relative_name=None,
+                                crl_issuer=None,
+                                reasons=None,
+                            )
+                        ]
+                    ),
+                    critical=False,
+                )
+                cert_builder = cert_builder.add_extension(
+                    x509.AuthorityInformationAccess(
+                        [
+                            x509.AccessDescription(
+                                x509.oid.AuthorityInformationAccessOID.CA_ISSUERS,
+                                x509.UniformResourceIdentifier(parent_urls["ca_cert"]),
+                            )
+                        ]
+                    ),
+                    critical=False,
+                )
+
         # Sign the certificate
         certificate = cert_builder.sign(
             private_key=signing_key,
@@ -229,6 +261,7 @@ class CAService:
             parent_ca_id=parent_ca_id,
             path_length=effective_path_length,
             allow_leaf_certs=effective_allow_leaf_certs,
+            crl_base_url=crl_base_url,
         )
 
         self.db.add(ca)
@@ -299,3 +332,95 @@ class CAService:
         )
         result = await self.db.execute(query)
         return list(result.scalars().all())
+
+    @staticmethod
+    def slugify(name: str) -> str:
+        """Convert a CA name to a URL-safe slug."""
+        slug = name.lower().strip()
+        slug = re.sub(r"[^\w\s-]", "", slug)
+        slug = re.sub(r"[\s_]+", "-", slug)
+        slug = re.sub(r"-+", "-", slug)
+        return slug.strip("-")
+
+    @staticmethod
+    def get_slug(ca: CertificateAuthority) -> str:
+        """Get the full slug for a CA: {name-slug}-{id}."""
+        return f"{CAService.slugify(ca.name)}-{ca.id}"
+
+    @staticmethod
+    def parse_slug(slug: str) -> tuple[str, int]:
+        """Parse a slug into (name_slug, ca_id). Raises ValueError on bad format."""
+        last_dash = slug.rfind("-")
+        if last_dash < 0:
+            raise ValueError(f"Invalid slug: {slug}")  # noqa: TRY003
+        name_part = slug[:last_dash]
+        try:
+            ca_id = int(slug[last_dash + 1 :])
+        except ValueError:
+            raise ValueError(f"Invalid slug: {slug}") from None  # noqa: TRY003
+        return name_part, ca_id
+
+    async def get_ca_by_slug(self, slug: str) -> Optional[CertificateAuthority]:
+        """Look up a CA by slug, validating the name prefix matches."""
+        try:
+            name_part, ca_id = CAService.parse_slug(slug)
+        except ValueError:
+            return None
+        ca = await self.db.get(CertificateAuthority, ca_id)
+        if ca is None or CAService.slugify(ca.name) != name_part:
+            return None
+        return ca
+
+    @staticmethod
+    def get_public_urls(ca: CertificateAuthority, base_url: str) -> dict[str, str]:
+        """Get the public CDP and AIA URLs for a CA."""
+        slug = CAService.get_slug(ca)
+        base = (ca.crl_base_url or base_url).rstrip("/")
+        return {
+            "crl": f"{base}/crl/{slug}",
+            "ca_cert": f"{base}/ca/{slug}.crt",
+        }
+
+    async def generate_crl(self, ca_id: int) -> bytes:
+        """Generate a signed CRL in DER format for the given CA."""
+        ca = await self.db.get(CertificateAuthority, ca_id)
+        if not ca:
+            raise ValueError(f"No CA: {ca_id}")  # noqa: TRY003
+
+        # Load CA private key and certificate
+        ca_key_pem = EncryptionService.decrypt_private_key(ca.private_key)
+        ca_private_key = serialization.load_pem_private_key(
+            ca_key_pem.encode("utf-8"),
+            password=None,
+        )
+        ca_cert = x509.load_pem_x509_certificate(
+            ca.certificate.encode("utf-8"),
+        )
+
+        # Query CRL entries for this CA
+        query = select(CRLEntry).where(CRLEntry.ca_id == ca_id)
+        result = await self.db.execute(query)
+        crl_entries = list(result.scalars().all())
+
+        # Build CRL
+        now = datetime.now(UTC)
+        crl_builder = x509.CertificateRevocationListBuilder()
+        crl_builder = crl_builder.issuer_name(ca_cert.subject)
+        crl_builder = crl_builder.last_update(now)
+        crl_builder = crl_builder.next_update(now + timedelta(days=7))
+
+        for entry in crl_entries:
+            revoked = (
+                x509.RevokedCertificateBuilder()
+                .serial_number(int(entry.serial_number, 16))
+                .revocation_date(entry.revocation_date)
+                .build()
+            )
+            crl_builder = crl_builder.add_revoked_certificate(revoked)
+
+        crl = crl_builder.sign(
+            private_key=ca_private_key,
+            algorithm=hashes.SHA256(),
+        )
+
+        return crl.public_bytes(serialization.Encoding.DER)

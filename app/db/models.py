@@ -117,6 +117,7 @@ class CertificateAuthority(CertificateAuthorityBase, table=True):
     )
     path_length: Optional[int] = Field(default=None)
     allow_leaf_certs: bool = Field(default=True)
+    crl_base_url: Optional[str] = Field(default=None)
 
     parent_ca: Optional["CertificateAuthority"] = Relationship(
         back_populates="child_cas",

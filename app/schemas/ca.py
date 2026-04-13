@@ -13,6 +13,7 @@ class CACreate(BaseModel):
     parent_ca_id: Optional[int] = None
     path_length: Optional[int] = None
     allow_leaf_certs: Optional[bool] = None
+    crl_base_url: Optional[str] = None
 
 
 class CAResponse(BaseModel):
@@ -32,6 +33,7 @@ class CAResponse(BaseModel):
     parent_ca_id: Optional[int] = None
     path_length: Optional[int] = None
     allow_leaf_certs: bool
+    crl_base_url: Optional[str] = None
 
     @computed_field  # type: ignore[prop-decorator]
     @property

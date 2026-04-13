@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
@@ -21,6 +21,7 @@ router = APIRouter()
 @router.post("/", response_model=CADetailResponse, status_code=status.HTTP_201_CREATED)
 async def create_ca(
     ca_in: CACreate,
+    request: Request,
     db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> CADetailResponse:
@@ -38,6 +39,7 @@ async def create_ca(
         )
     ca_service = CAService(db)
     try:
+        base_url = str(request.base_url).rstrip("/")
         ca = await ca_service.create_ca(
             name=ca_in.name,
             subject_dn=ca_in.subject_dn,
@@ -49,6 +51,8 @@ async def create_ca(
             parent_ca_id=ca_in.parent_ca_id,
             path_length=ca_in.path_length,
             allow_leaf_certs=ca_in.allow_leaf_certs,
+            crl_base_url=ca_in.crl_base_url,
+            base_url=base_url,
         )
     except Exception as e:
         raise HTTPException(

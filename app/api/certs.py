@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_active_user
@@ -31,6 +31,7 @@ router = APIRouter()
 async def create_certificate(
     cert_in: CertificateCreate,
     ca_id: int,
+    request: Request,
     db: AsyncSession = Depends(get_session),  # noqa: B008
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> CertificateDetailResponse:
@@ -44,6 +45,7 @@ async def create_certificate(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
     cert_service = CertificateService(db)
     try:
+        base_url = str(request.base_url).rstrip("/")
         cert = await cert_service.create_certificate(
             ca_id=ca_id,
             common_name=cert_in.common_name,
@@ -54,6 +56,7 @@ async def create_certificate(
             include_private_key=cert_in.include_private_key,
             organization_id=current_user.organization_id,
             created_by_user_id=current_user.id,
+            base_url=base_url,
         )
     except LeafCertNotAllowedError as e:
         raise HTTPException(
