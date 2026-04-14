@@ -14,7 +14,8 @@ COPY pyproject.toml uv.lock LICENSE README.md ./
 COPY cli/ cli/
 COPY app/ app/
 
-# Install dependencies (CLI + server, no dev tools)
+# Install dependencies into system Python (no venv in container)
+ENV UV_PROJECT_ENVIRONMENT=/usr/local
 RUN uv sync --no-dev --group server --no-editable --python-preference only-system
 
 # Copy remaining application files
