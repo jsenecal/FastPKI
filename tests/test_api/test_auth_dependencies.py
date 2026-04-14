@@ -274,6 +274,7 @@ async def test_get_current_user_invalidated_tokens(
     db: AsyncSession, auth_test_user: User
 ):
     """Test that tokens issued before tokens_invalidated_at are rejected."""
+    import asyncio
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
@@ -285,6 +286,9 @@ async def test_get_current_user_invalidated_tokens(
             "role": auth_test_user.role,
         }
     )
+
+    # Wait so invalidation timestamp is strictly after the token's iat (seconds precision)
+    await asyncio.sleep(1.1)
 
     auth_test_user.tokens_invalidated_at = datetime.now(ZoneInfo("UTC"))
     db.add(auth_test_user)

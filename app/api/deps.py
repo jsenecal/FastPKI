@@ -1,3 +1,5 @@
+from zoneinfo import ZoneInfo
+
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -9,6 +11,8 @@ from app.core.config import settings
 from app.db.models import User, UserRole
 from app.db.session import get_session
 from app.schemas.user import TokenPayload
+
+UTC = ZoneInfo("UTC")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/token")
 
@@ -48,12 +52,12 @@ async def get_current_user(
     if user is None:
         raise credentials_exception
 
-    if (
-        user.tokens_invalidated_at
-        and token_data.iat
-        and token_data.iat < int(user.tokens_invalidated_at.timestamp())
-    ):
-        raise credentials_exception
+    if user.tokens_invalidated_at and token_data.iat:
+        invalidated_at = user.tokens_invalidated_at
+        if invalidated_at.tzinfo is None:
+            invalidated_at = invalidated_at.replace(tzinfo=UTC)
+        if token_data.iat < int(invalidated_at.timestamp()):
+            raise credentials_exception
 
     return user
 

@@ -222,3 +222,166 @@ async def test_regular_user_cannot_create_admin(client, db):
 
     # Should be forbidden
     assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_login_returns_refresh_token(client, db):
+    user_data = {
+        "username": "refreshloginuser",
+        "email": "refreshlogin@example.com",
+        "password": "password123",
+    }
+    await client.post("/api/v1/users/", json=user_data)
+
+    response = await client.post(
+        "/api/v1/auth/token",
+        data={"username": "refreshloginuser", "password": "password123"},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert "refresh_token" in data
+    assert data["refresh_token"] is not None
+    assert data["token_type"] == "bearer"
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_endpoint(client, db):
+    user_data = {
+        "username": "refreshuser",
+        "email": "refresh@example.com",
+        "password": "password123",
+    }
+    await client.post("/api/v1/users/", json=user_data)
+
+    login_response = await client.post(
+        "/api/v1/auth/token",
+        data={"username": "refreshuser", "password": "password123"},
+    )
+    refresh_token = login_response.json()["refresh_token"]
+
+    response = await client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": refresh_token},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert "refresh_token" in data
+    assert data["refresh_token"] != refresh_token
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_invalid(client, db):
+    response = await client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": "invalid-token"},
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_reuse_rejected(client, db):
+    """Old refresh token should be rejected after rotation."""
+    user_data = {
+        "username": "reuseuser",
+        "email": "reuse@example.com",
+        "password": "password123",
+    }
+    await client.post("/api/v1/users/", json=user_data)
+
+    login_response = await client.post(
+        "/api/v1/auth/token",
+        data={"username": "reuseuser", "password": "password123"},
+    )
+    old_refresh = login_response.json()["refresh_token"]
+
+    await client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": old_refresh},
+    )
+
+    response = await client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": old_refresh},
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_logout_endpoint(client, db):
+    user_data = {
+        "username": "logoutuser",
+        "email": "logout@example.com",
+        "password": "password123",
+    }
+    await client.post("/api/v1/users/", json=user_data)
+
+    login_response = await client.post(
+        "/api/v1/auth/token",
+        data={"username": "logoutuser", "password": "password123"},
+    )
+    tokens = login_response.json()
+    headers = {"Authorization": f"Bearer {tokens['access_token']}"}
+
+    response = await client.post(
+        "/api/v1/auth/logout",
+        json={"refresh_token": tokens["refresh_token"]},
+        headers=headers,
+    )
+
+    assert response.status_code == 204
+
+    # Access token should now be rejected
+    response = await client.get("/api/v1/users/me", headers=headers)
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_invalidate_endpoint(client, db):
+    import asyncio
+
+    user_data = {
+        "username": "invalidateuser",
+        "email": "invalidate@example.com",
+        "password": "password123",
+    }
+    await client.post("/api/v1/users/", json=user_data)
+
+    login1 = await client.post(
+        "/api/v1/auth/token",
+        data={"username": "invalidateuser", "password": "password123"},
+    )
+    login2 = await client.post(
+        "/api/v1/auth/token",
+        data={"username": "invalidateuser", "password": "password123"},
+    )
+
+    tokens1 = login1.json()
+    tokens2 = login2.json()
+    headers1 = {"Authorization": f"Bearer {tokens1['access_token']}"}
+    headers2 = {"Authorization": f"Bearer {tokens2['access_token']}"}
+
+    # Wait so invalidation timestamp is strictly after the tokens' iat (seconds precision)
+    await asyncio.sleep(1.1)
+
+    response = await client.post("/api/v1/auth/invalidate", headers=headers1)
+    assert response.status_code == 204
+
+    response = await client.get("/api/v1/users/me", headers=headers1)
+    assert response.status_code == 401
+
+    response = await client.get("/api/v1/users/me", headers=headers2)
+    assert response.status_code == 401
+
+    # But user can still log in again
+    login3 = await client.post(
+        "/api/v1/auth/token",
+        data={"username": "invalidateuser", "password": "password123"},
+    )
+    assert login3.status_code == 200
+    headers3 = {"Authorization": f"Bearer {login3.json()['access_token']}"}
+    response = await client.get("/api/v1/users/me", headers=headers3)
+    assert response.status_code == 200
