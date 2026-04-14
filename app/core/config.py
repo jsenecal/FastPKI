@@ -42,7 +42,8 @@ class Settings(BaseSettings):
 
     # Security settings
     SECRET_KEY: str = "supersecretkey"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15  # 15 minutes
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     ALGORITHM: str = "HS256"
 
     # Rate limiting
