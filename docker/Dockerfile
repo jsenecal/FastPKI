@@ -5,8 +5,8 @@ LABEL org.opencontainers.image.version="${VERSION}"
 
 WORKDIR /app
 
-# Install uv for faster dependency installation
-RUN pip install uv
+# Install uv via official image
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 RUN apt-get update && apt-get install -y curl && apt-get clean
 
 # Copy files needed for dependency resolution
@@ -15,7 +15,7 @@ COPY cli/ cli/
 COPY app/ app/
 
 # Install dependencies (CLI + server, no dev tools)
-RUN uv sync --system --no-dev --group server --no-editable
+RUN uv sync --no-dev --group server --no-editable --python-preference only-system
 
 # Copy remaining application files
 COPY alembic.ini ./
