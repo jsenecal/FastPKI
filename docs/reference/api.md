@@ -294,8 +294,38 @@ Issue a new certificate under the specified CA.
 | `key_size` | `int` | No | `CERT_KEY_SIZE` | RSA key size |
 | `valid_days` | `int` | No | `CERT_DAYS` | Validity in days |
 | `include_private_key` | `bool` | No | `true` | Generate a private key |
+| `san_dns_names` | `string[]` | No | — | DNS SAN entries (server/dual-purpose only) |
+| `san_ip_addresses` | `string[]` | No | — | IP SAN entries (server/dual-purpose only) |
+| `san_email_addresses` | `string[]` | No | — | Email SAN entries (client/dual-purpose only) |
 
-**Response** `201`: Certificate detail (includes private key if generated). **Errors:** `400` (includes when CA has `allow_leaf_certs=false`), `403`, `404`.
+For `server` and `dual_purpose` certificates, if no DNS SANs are supplied the Common Name is auto-added as a DNS SAN. For `client` certificates, if no email SANs are supplied and the Common Name parses as an email address, it is auto-added. SAN type restrictions are enforced: servers reject email SANs, clients reject DNS and IP SANs.
+
+**Response** `201`: Certificate detail (includes private key if generated). **Errors:** `400` (includes when CA has `allow_leaf_certs=false`, or when SAN types violate the certificate-type restrictions), `403`, `404`.
+
+### `POST /certificates/sign-csr`
+
+Sign an externally-generated Certificate Signing Request. The submitted CSR's subject, SANs, and public key are used as defaults; any explicit fields in the request body override them. The CSR's signature is verified before signing.
+
+- **Auth required:** `create_cert` capability on the resolved CA, Admin (same org), or Superuser
+- **Content-Type:** `application/json`
+- **Audit-logged**
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `csr` | `string` | Yes | — | PEM-encoded CSR |
+| `ca_id` | `int` | Conditional | — | Issuing CA by ID (required if `ca_name` omitted) |
+| `ca_name` | `string` | Conditional | — | Issuing CA by name, scoped to the caller's org (or globally for superusers) |
+| `certificate_type` | `string` | Yes | — | `server`, `client`, or `dual_purpose` |
+| `valid_days` | `int` | No | `CERT_DAYS` | Validity in days |
+| `common_name` | `string` | No | From CSR | Override the Common Name |
+| `subject_dn` | `string` | No | From CSR | Override the full DN |
+| `san_dns_names` | `string[]` | No | From CSR | Override DNS SANs |
+| `san_ip_addresses` | `string[]` | No | From CSR | Override IP SANs |
+| `san_email_addresses` | `string[]` | No | From CSR | Override email SANs |
+
+Exactly one of `ca_id` or `ca_name` must be provided. The `certificate` service never returns a private key for this endpoint — the client retains the key it generated alongside the CSR.
+
+**Response** `201`: Certificate object (no private key). **Errors:** `400` (malformed CSR, invalid signature, SAN-type violation, or CA has `allow_leaf_certs=false`), `403`, `404` (CA not found).
 
 ### `GET /certificates/`
 

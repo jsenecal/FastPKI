@@ -28,8 +28,33 @@ curl -s -X POST "http://localhost:8000/api/v1/certificates/?ca_id=1" \
 | `key_size` | No | `CERT_KEY_SIZE` (2048) | RSA key size in bits |
 | `valid_days` | No | `CERT_DAYS` (365) | Validity period in days |
 | `include_private_key` | No | `true` | Whether to generate and store a private key |
+| `san_dns_names` | No | — | DNS Subject Alternative Names (server/dual-purpose) |
+| `san_ip_addresses` | No | — | IP Subject Alternative Names (server/dual-purpose) |
+| `san_email_addresses` | No | — | Email Subject Alternative Names (client/dual-purpose) |
 
 **Required permission:** `create_cert` capability on the target CA, Admin role in the same org, or Superuser.
+
+### Subject Alternative Names
+
+Modern TLS clients ignore the Common Name and rely on SANs. FastPKI auto-populates sensible defaults:
+
+- **Server / dual-purpose** certificates get a DNS SAN equal to the Common Name when no `san_dns_names` are provided.
+- **Client** certificates whose Common Name parses as an email get an email SAN when no `san_email_addresses` are provided.
+
+SAN types are constrained by certificate type: servers reject email SANs; clients reject DNS and IP SANs. Violations return `400`.
+
+```bash
+curl -s -X POST "http://localhost:8000/api/v1/certificates/?ca_id=1" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "common_name": "api.example.com",
+    "subject_dn": "CN=api.example.com,O=Acme Corp,C=US",
+    "certificate_type": "server",
+    "san_dns_names": ["api.example.com", "api-v2.example.com"],
+    "san_ip_addresses": ["10.0.0.42"]
+  }' | python -m json.tool
+```
 
 ### Client Certificate Example
 
@@ -43,6 +68,32 @@ curl -s -X POST "http://localhost:8000/api/v1/certificates/?ca_id=1" \
     "certificate_type": "client"
   }' | python -m json.tool
 ```
+
+## Sign a Certificate Signing Request
+
+When the private key must stay on the requesting host — for example, a cert-manager controller, a load balancer provisioning its own keys, or a compliance workflow that forbids the CA from ever seeing the key — submit a CSR instead of calling the create endpoint.
+
+```bash
+# Generate a key and CSR locally
+openssl req -new -newkey rsa:2048 -nodes \
+  -keyout api.example.com.key \
+  -out api.example.com.csr \
+  -subj "/CN=api.example.com/O=Acme Corp/C=US"
+
+# Submit the CSR for signing
+curl -s -X POST http://localhost:8000/api/v1/certificates/sign-csr \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "$(jq -Rs --arg type server --arg ca "Acme Issuing CA" \
+        '{csr: ., certificate_type: $type, ca_name: $ca}' \
+        < api.example.com.csr)" | python -m json.tool
+```
+
+The CA is selected by `ca_id` or `ca_name` (one required). `ca_name` is scoped to the caller's organization; superusers may resolve any CA by name. Subject, SANs, and the public key are extracted from the CSR; pass explicit `common_name`, `subject_dn`, or `san_*` fields to override.
+
+The response contains only the signed certificate — never a private key, since the requester already holds it.
+
+**Required permission:** `create_cert` capability on the resolved CA, Admin in the same org, or Superuser. Audit-logged.
 
 ## List Certificates
 

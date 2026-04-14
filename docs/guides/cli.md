@@ -169,6 +169,21 @@ Other options:
 | `--key-size` / `-k` | RSA key size (uses config default) |
 | `--valid-days` / `-v` | Validity period (uses config default) |
 | `--no-private-key` | Don't generate a private key |
+| `--san-dns` | DNS SAN entry (repeatable) |
+| `--san-ip` | IP SAN entry (repeatable) |
+| `--san-email` | Email SAN entry (repeatable) |
+
+### Sign a CSR
+
+Submit a CSR produced elsewhere (the private key never leaves the requesting host).
+
+```bash
+fastpki cert sign-csr ./api.example.com.csr \
+  --ca-name "Acme Issuing CA" \
+  --type server
+```
+
+Use `--ca <id>` to select the CA by ID instead of name. Defaults (subject, SANs, public key) are extracted from the CSR; pass `--cn`, `--subject-dn`, `--san-dns`, `--san-ip`, or `--san-email` to override them. The response never includes a private key.
 
 ### Show certificate details
 
