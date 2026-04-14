@@ -43,6 +43,7 @@ class CertificateService:
         san_dns_names: list[str] | None = None,
         san_ip_addresses: list[str] | None = None,
         san_email_addresses: list[str] | None = None,
+        public_key: object | None = None,
     ) -> Certificate:
         """Create a new certificate signed by the specified CA."""
         key_size = key_size or settings.CERT_KEY_SIZE
@@ -68,18 +69,16 @@ class CertificateService:
             ca.certificate.encode("utf-8"),
         )
 
-        # Generate key pair for the new certificate if needed
-        private_key_obj = None
+        # Get public key: from provided key (CSR case) or generate a new pair
         private_key_pem = None
-
-        if include_private_key:
+        if public_key is not None:
+            pub_key = public_key
+        elif include_private_key:
             private_key_obj, private_key_pem = CAService.generate_key_pair(key_size)
+            pub_key = private_key_obj.public_key()
         else:
-            # If no private key is needed, just generate a temporary one for the CSR
-            # But don't store it in the certificate
             private_key_obj, _ = CAService.generate_key_pair(key_size)
-            # Explicitly set private_key_pem to None
-            private_key_pem = None
+            pub_key = private_key_obj.public_key()
 
         # Parse subject DN
         subject = CAService.parse_subject_dn(subject_dn)
@@ -97,7 +96,7 @@ class CertificateService:
 
         serial_number = x509.random_serial_number()
         cert_builder = cert_builder.serial_number(serial_number)
-        cert_builder = cert_builder.public_key(private_key_obj.public_key())
+        cert_builder = cert_builder.public_key(pub_key)
 
         # Add extensions based on certificate type
         cert_builder = cert_builder.add_extension(
@@ -193,7 +192,7 @@ class CertificateService:
 
         # Add Subject Key Identifier
         cert_builder = cert_builder.add_extension(
-            x509.SubjectKeyIdentifier.from_public_key(private_key_obj.public_key()),
+            x509.SubjectKeyIdentifier.from_public_key(pub_key),
             critical=False,
         )
 
@@ -270,6 +269,108 @@ class CertificateService:
         await self.db.refresh(cert)
 
         return cert
+
+    @staticmethod
+    def parse_csr(csr_pem: str) -> x509.CertificateSigningRequest:
+        """Parse and verify a PEM-encoded CSR."""
+        try:
+            csr = x509.load_pem_x509_csr(csr_pem.encode("utf-8"))
+        except Exception as e:
+            raise ValueError(f"Invalid CSR: {e}") from e  # noqa: TRY003
+        if not csr.is_signature_valid:
+            raise ValueError("CSR signature verification failed")  # noqa: TRY003
+        return csr
+
+    @staticmethod
+    def extract_csr_san_names(
+        csr: x509.CertificateSigningRequest,
+    ) -> tuple[list[str], list[str], list[str]]:
+        """Extract DNS names, IP addresses, and email addresses from a CSR's SAN."""
+        dns_names: list[str] = []
+        ip_addresses: list[str] = []
+        email_addresses: list[str] = []
+        try:
+            san_ext = csr.extensions.get_extension_for_class(
+                x509.SubjectAlternativeName
+            )
+            dns_names = san_ext.value.get_values_for_type(x509.DNSName)
+            ip_addresses = [
+                str(ip) for ip in san_ext.value.get_values_for_type(x509.IPAddress)
+            ]
+            email_addresses = san_ext.value.get_values_for_type(x509.RFC822Name)
+        except x509.ExtensionNotFound:
+            pass
+        return dns_names, ip_addresses, email_addresses
+
+    async def sign_csr(
+        self,
+        csr_pem: str,
+        ca_id: int,
+        certificate_type: CertificateType,
+        valid_days: int | None = None,
+        common_name: str | None = None,
+        subject_dn: str | None = None,
+        san_dns_names: list[str] | None = None,
+        san_ip_addresses: list[str] | None = None,
+        san_email_addresses: list[str] | None = None,
+        organization_id: int | None = None,
+        created_by_user_id: int | None = None,
+        base_url: str | None = None,
+    ) -> Certificate:
+        """Sign a CSR. Extracts defaults from the CSR; explicit params override."""
+        csr = self.parse_csr(csr_pem)
+
+        # Extract defaults from CSR
+        csr_cn_attrs = csr.subject.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)
+        csr_cn = csr_cn_attrs[0].value if csr_cn_attrs else ""
+        oid_to_short = {
+            x509.oid.NameOID.COMMON_NAME: "CN",
+            x509.oid.NameOID.ORGANIZATION_NAME: "O",
+            x509.oid.NameOID.ORGANIZATIONAL_UNIT_NAME: "OU",
+            x509.oid.NameOID.COUNTRY_NAME: "C",
+            x509.oid.NameOID.STATE_OR_PROVINCE_NAME: "ST",
+            x509.oid.NameOID.LOCALITY_NAME: "L",
+        }
+        csr_subject_parts = []
+        for attr in csr.subject:
+            short = oid_to_short.get(attr.oid, attr.oid.dotted_string)
+            csr_subject_parts.append(f"{short}={attr.value}")
+        csr_subject_dn = ",".join(csr_subject_parts)
+        csr_dns, csr_ips, csr_emails = self.extract_csr_san_names(csr)
+
+        # Apply overrides
+        effective_cn = common_name or csr_cn
+        effective_subject_dn = subject_dn or csr_subject_dn
+        effective_dns = (
+            san_dns_names if san_dns_names is not None else (csr_dns or None)
+        )
+        effective_ips = (
+            san_ip_addresses if san_ip_addresses is not None else (csr_ips or None)
+        )
+        effective_emails = (
+            san_email_addresses
+            if san_email_addresses is not None
+            else (csr_emails or None)
+        )
+
+        if not effective_cn:
+            raise ValueError("No common name in CSR or request")  # noqa: TRY003
+
+        return await self.create_certificate(
+            ca_id=ca_id,
+            common_name=effective_cn,
+            subject_dn=effective_subject_dn,
+            certificate_type=certificate_type,
+            valid_days=valid_days,
+            include_private_key=False,
+            organization_id=organization_id,
+            created_by_user_id=created_by_user_id,
+            base_url=base_url,
+            san_dns_names=effective_dns,
+            san_ip_addresses=effective_ips,
+            san_email_addresses=effective_emails,
+            public_key=csr.public_key(),
+        )
 
     async def get_certificate(self, cert_id: int) -> Certificate | None:
         """Get a certificate by ID."""

@@ -279,6 +279,16 @@ class CAService:
         ca = await self.db.get(CertificateAuthority, ca_id)
         return ca
 
+    async def get_ca_by_name(
+        self, name: str, organization_id: int | None = None
+    ) -> CertificateAuthority | None:
+        """Get a CA by name, optionally scoped to an organization."""
+        query = select(CertificateAuthority).where(CertificateAuthority.name == name)
+        if organization_id is not None:
+            query = query.where(CertificateAuthority.organization_id == organization_id)
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()
+
     async def list_cas(
         self, organization_id: int | None = None
     ) -> list[CertificateAuthority]:
