@@ -34,6 +34,7 @@ class CertificateType(str, Enum):
     CA = "ca"
     SERVER = "server"
     CLIENT = "client"
+    DUAL_PURPOSE = "dual_purpose"
 
 
 class AuditAction(str, Enum):

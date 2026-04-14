@@ -121,6 +121,9 @@ class CertificateService:
             extended_key_usages.append(ExtendedKeyUsageOID.SERVER_AUTH)
         elif certificate_type == CertificateType.CLIENT:
             extended_key_usages.append(ExtendedKeyUsageOID.CLIENT_AUTH)
+        elif certificate_type == CertificateType.DUAL_PURPOSE:
+            extended_key_usages.append(ExtendedKeyUsageOID.SERVER_AUTH)
+            extended_key_usages.append(ExtendedKeyUsageOID.CLIENT_AUTH)
 
         if extended_key_usages:
             cert_builder = cert_builder.add_extension(

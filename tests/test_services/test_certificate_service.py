@@ -1,6 +1,7 @@
 import pytest
 import pytest_asyncio
-from cryptography.x509.oid import NameOID
+from cryptography import x509
+from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import (
@@ -172,6 +173,30 @@ async def test_different_cert_types(db: AsyncSession, test_ca: CertificateAuthor
     )
 
     assert ca_cert.certificate_type == CertificateType.CA
+
+
+@pytest.mark.asyncio
+async def test_dual_purpose_cert_has_both_ekus(
+    db: AsyncSession, test_ca: CertificateAuthority
+):
+    """Test that dual_purpose certs have both SERVER_AUTH and CLIENT_AUTH EKUs."""
+    cert_service = CertificateService(db)
+    cert = await cert_service.create_certificate(
+        ca_id=test_ca.id,
+        common_name="peer.example.com",
+        subject_dn="CN=peer.example.com,O=Test Organization,C=US",
+        certificate_type=CertificateType.DUAL_PURPOSE,
+    )
+
+    assert cert.certificate_type == CertificateType.DUAL_PURPOSE
+
+    # Parse the X.509 certificate and check EKUs
+    x509_cert = x509.load_pem_x509_certificate(cert.certificate.encode("utf-8"))
+    eku_ext = x509_cert.extensions.get_extension_for_class(x509.ExtendedKeyUsage)
+    ekus = list(eku_ext.value)
+
+    assert ExtendedKeyUsageOID.SERVER_AUTH in ekus
+    assert ExtendedKeyUsageOID.CLIENT_AUTH in ekus
 
 
 def test_parse_subject_dn_escaped_comma():
