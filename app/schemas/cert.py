@@ -17,6 +17,19 @@ class CertificateCreate(BaseModel):
     san_email_addresses: list[str] | None = None
 
 
+class CSRSignRequest(BaseModel):
+    csr: str
+    ca_id: int | None = None
+    ca_name: str | None = None
+    certificate_type: CertificateType
+    valid_days: int | None = None
+    common_name: str | None = None
+    subject_dn: str | None = None
+    san_dns_names: list[str] | None = None
+    san_ip_addresses: list[str] | None = None
+    san_email_addresses: list[str] | None = None
+
+
 class CertificateResponse(BaseModel):
     model_config = {"from_attributes": True}
 

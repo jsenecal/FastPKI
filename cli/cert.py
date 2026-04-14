@@ -130,6 +130,53 @@ def create(
     display_detail(data, fields, title="Certificate Created")
 
 
+@app.command("sign-csr")
+def sign_csr(
+    csr_file: typer.FileText = typer.Argument(..., help="Path to PEM-encoded CSR file"),
+    ca_id: int | None = typer.Option(None, "--ca", "-c", help="Issuing CA ID"),
+    ca_name: str | None = typer.Option(None, "--ca-name", help="Issuing CA name"),
+    cert_type: str = typer.Option(
+        "server", "--type", "-t", help="Certificate type: server, client, dual_purpose"
+    ),
+    valid_days: int | None = typer.Option(None, "--valid-days", "-v"),
+    common_name: str | None = typer.Option(
+        None, "--cn", "-n", help="Override CN from CSR"
+    ),
+    subject_dn: str | None = typer.Option(None, "--subject-dn", "-s"),
+    san_dns: list[str] | None = typer.Option(None, "--san-dns"),
+    san_ip: list[str] | None = typer.Option(None, "--san-ip"),
+    san_email: list[str] | None = typer.Option(None, "--san-email"),
+) -> None:
+    """Sign a CSR file."""
+    if ca_id is None and ca_name is None:
+        typer.echo("Error: provide --ca or --ca-name", err=True)
+        raise typer.Exit(1)
+    payload: dict[str, object] = {
+        "csr": csr_file.read(),
+        "certificate_type": cert_type,
+    }
+    if ca_id is not None:
+        payload["ca_id"] = ca_id
+    if ca_name is not None:
+        payload["ca_name"] = ca_name
+    if valid_days is not None:
+        payload["valid_days"] = valid_days
+    if common_name is not None:
+        payload["common_name"] = common_name
+    if subject_dn is not None:
+        payload["subject_dn"] = subject_dn
+    if san_dns:
+        payload["san_dns_names"] = san_dns
+    if san_ip:
+        payload["san_ip_addresses"] = san_ip
+    if san_email:
+        payload["san_email_addresses"] = san_email
+
+    data = client.post("/api/v1/certificates/sign-csr", json=payload).json()
+    fields = [*CERT_DETAIL_FIELDS, ("Certificate", "certificate")]
+    display_detail(data, fields, title="CSR Signed")
+
+
 @app.command()
 def revoke(
     cert_id: int = typer.Argument(..., help="Certificate ID"),

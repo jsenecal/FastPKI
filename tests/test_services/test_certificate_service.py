@@ -1,6 +1,9 @@
+import ipaddress
+
 import pytest
 import pytest_asyncio
 from cryptography import x509
+from cryptography.hazmat.primitives import serialization
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -393,6 +396,175 @@ async def test_ca_cert_no_auto_san(db: AsyncSession, test_ca: CertificateAuthori
     x509_cert = x509.load_pem_x509_certificate(cert.certificate.encode("utf-8"))
     with pytest.raises(x509.ExtensionNotFound):
         x509_cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+
+
+@pytest_asyncio.fixture
+async def sample_csr() -> str:
+    """Generate a sample CSR for testing."""
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.x509.oid import NameOID
+
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    csr = (
+        x509.CertificateSigningRequestBuilder()
+        .subject_name(
+            x509.Name(
+                [
+                    x509.NameAttribute(NameOID.COMMON_NAME, "csr.example.com"),
+                    x509.NameAttribute(NameOID.ORGANIZATION_NAME, "CSR Org"),
+                    x509.NameAttribute(NameOID.COUNTRY_NAME, "US"),
+                ]
+            )
+        )
+        .add_extension(
+            x509.SubjectAlternativeName(
+                [
+                    x509.DNSName("csr.example.com"),
+                    x509.DNSName("alt.example.com"),
+                    x509.IPAddress(ipaddress.IPv4Address("10.0.0.1")),
+                ]
+            ),
+            critical=False,
+        )
+        .sign(key, hashes.SHA256())
+    )
+    return csr.public_bytes(serialization.Encoding.PEM).decode("utf-8")
+
+
+@pytest_asyncio.fixture
+async def simple_csr() -> str:
+    """Generate a CSR with no SANs."""
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.x509.oid import NameOID
+
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    csr = (
+        x509.CertificateSigningRequestBuilder()
+        .subject_name(
+            x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "simple.example.com")])
+        )
+        .sign(key, hashes.SHA256())
+    )
+    return csr.public_bytes(serialization.Encoding.PEM).decode("utf-8")
+
+
+@pytest.mark.asyncio
+async def test_sign_csr_uses_csr_values(
+    db: AsyncSession, test_ca: CertificateAuthority, sample_csr: str
+):
+    """sign_csr should extract CN, subject, and SANs from the CSR."""
+    cert_service = CertificateService(db)
+    cert = await cert_service.sign_csr(
+        csr_pem=sample_csr,
+        ca_id=test_ca.id,
+        certificate_type=CertificateType.SERVER,
+    )
+
+    assert cert.common_name == "csr.example.com"
+    assert cert.private_key is None
+
+    x509_cert = x509.load_pem_x509_certificate(cert.certificate.encode("utf-8"))
+    san_ext = x509_cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+    dns_names = san_ext.value.get_values_for_type(x509.DNSName)
+    assert "csr.example.com" in dns_names
+    assert "alt.example.com" in dns_names
+
+    ips = san_ext.value.get_values_for_type(x509.IPAddress)
+    assert ipaddress.IPv4Address("10.0.0.1") in ips
+
+
+@pytest.mark.asyncio
+async def test_sign_csr_overrides_cn(
+    db: AsyncSession, test_ca: CertificateAuthority, sample_csr: str
+):
+    """Explicit common_name should override the CSR's CN."""
+    cert_service = CertificateService(db)
+    cert = await cert_service.sign_csr(
+        csr_pem=sample_csr,
+        ca_id=test_ca.id,
+        certificate_type=CertificateType.SERVER,
+        common_name="override.example.com",
+        san_dns_names=["override.example.com"],
+    )
+
+    assert cert.common_name == "override.example.com"
+
+
+@pytest.mark.asyncio
+async def test_sign_csr_overrides_sans(
+    db: AsyncSession, test_ca: CertificateAuthority, sample_csr: str
+):
+    """Explicit SANs should override the CSR's SANs."""
+    cert_service = CertificateService(db)
+    cert = await cert_service.sign_csr(
+        csr_pem=sample_csr,
+        ca_id=test_ca.id,
+        certificate_type=CertificateType.SERVER,
+        san_dns_names=["only-this.example.com"],
+    )
+
+    x509_cert = x509.load_pem_x509_certificate(cert.certificate.encode("utf-8"))
+    san_ext = x509_cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+    dns_names = san_ext.value.get_values_for_type(x509.DNSName)
+    assert dns_names == ["only-this.example.com"]
+
+
+@pytest.mark.asyncio
+async def test_sign_csr_auto_populates_san_when_csr_has_none(
+    db: AsyncSession, test_ca: CertificateAuthority, simple_csr: str
+):
+    """CSR with no SANs should auto-populate from CN for server certs."""
+    cert_service = CertificateService(db)
+    cert = await cert_service.sign_csr(
+        csr_pem=simple_csr,
+        ca_id=test_ca.id,
+        certificate_type=CertificateType.SERVER,
+    )
+
+    x509_cert = x509.load_pem_x509_certificate(cert.certificate.encode("utf-8"))
+    san_ext = x509_cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+    dns_names = san_ext.value.get_values_for_type(x509.DNSName)
+    assert "simple.example.com" in dns_names
+
+
+@pytest.mark.asyncio
+async def test_sign_csr_uses_csr_public_key(
+    db: AsyncSession, test_ca: CertificateAuthority, sample_csr: str
+):
+    """The signed certificate should use the public key from the CSR."""
+    csr = x509.load_pem_x509_csr(sample_csr.encode("utf-8"))
+    csr_pub_bytes = csr.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+
+    cert_service = CertificateService(db)
+    cert = await cert_service.sign_csr(
+        csr_pem=sample_csr,
+        ca_id=test_ca.id,
+        certificate_type=CertificateType.SERVER,
+    )
+
+    x509_cert = x509.load_pem_x509_certificate(cert.certificate.encode("utf-8"))
+    cert_pub_bytes = x509_cert.public_key().public_bytes(
+        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+    assert csr_pub_bytes == cert_pub_bytes
+
+
+@pytest.mark.asyncio
+async def test_sign_csr_rejects_invalid_csr(
+    db: AsyncSession, test_ca: CertificateAuthority
+):
+    """Invalid CSR PEM should raise ValueError."""
+    cert_service = CertificateService(db)
+    with pytest.raises(ValueError, match="Invalid CSR"):
+        await cert_service.sign_csr(
+            csr_pem="not a valid CSR",
+            ca_id=test_ca.id,
+            certificate_type=CertificateType.SERVER,
+        )
 
 
 def test_parse_subject_dn_escaped_comma():

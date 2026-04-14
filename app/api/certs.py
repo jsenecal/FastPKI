@@ -9,8 +9,10 @@ from app.schemas.cert import (
     CertificateDetailResponse,
     CertificateResponse,
     CertificateRevoke,
+    CSRSignRequest,
 )
 from app.services.audit import AuditService
+from app.services.ca import CAService
 from app.services.cert import CertificateService
 from app.services.encryption import EncryptionService
 from app.services.exceptions import (
@@ -89,6 +91,86 @@ async def create_certificate(
             cert.private_key
         )
         return cert
+
+
+@router.post(
+    "/sign-csr", response_model=CertificateResponse, status_code=status.HTTP_201_CREATED
+)
+async def sign_csr(
+    csr_in: CSRSignRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_session),  # noqa: B008
+    current_user: User = Depends(get_current_active_user),  # noqa: B008
+) -> CertificateResponse:
+    """Sign a CSR. Extracts defaults from the CSR; explicit fields override."""
+    # Resolve CA by id or name
+    if csr_in.ca_id is None and csr_in.ca_name is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Either ca_id or ca_name must be provided",
+        )
+    ca_service = CAService(db)
+    if csr_in.ca_id is not None:
+        ca_id = csr_in.ca_id
+    else:
+        org_id = (
+            current_user.organization_id
+            if current_user.role != UserRole.SUPERUSER
+            else None
+        )
+        ca = await ca_service.get_ca_by_name(csr_in.ca_name, organization_id=org_id)  # type: ignore[arg-type]
+        if ca is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"CA '{csr_in.ca_name}' not found",
+            )
+        ca_id = ca.id  # type: ignore[assignment]
+
+    perm = PermissionService(db)
+    try:
+        await perm.check_ca_access(current_user, ca_id, PermissionAction.CREATE_CERT)
+    except NotFoundError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e)) from e
+
+    cert_service = CertificateService(db)
+    try:
+        base_url = str(request.base_url).rstrip("/")
+        cert = await cert_service.sign_csr(
+            csr_pem=csr_in.csr,
+            ca_id=ca_id,
+            certificate_type=csr_in.certificate_type,
+            valid_days=csr_in.valid_days,
+            common_name=csr_in.common_name,
+            subject_dn=csr_in.subject_dn,
+            san_dns_names=csr_in.san_dns_names,
+            san_ip_addresses=csr_in.san_ip_addresses,
+            san_email_addresses=csr_in.san_email_addresses,
+            organization_id=current_user.organization_id,
+            created_by_user_id=current_user.id,
+            base_url=base_url,
+        )
+    except LeafCertNotAllowedError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        ) from e
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
+        ) from e
+
+    audit_service = AuditService(db)
+    await audit_service.log_action(
+        action=AuditAction.CERT_CREATE,
+        user_id=current_user.id,
+        username=current_user.username,
+        organization_id=current_user.organization_id,
+        resource_type="certificate",
+        resource_id=cert.id,
+        detail=f"Signed CSR for '{cert.common_name}'",
+    )
+    return cert
 
 
 @router.get("/", response_model=list[CertificateResponse])
