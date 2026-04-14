@@ -118,7 +118,7 @@ async def sign_csr(
             if current_user.role != UserRole.SUPERUSER
             else None
         )
-        ca = await ca_service.get_ca_by_name(csr_in.ca_name, organization_id=org_id)  # type: ignore[arg-type]
+        ca = await ca_service.get_ca_by_name(csr_in.ca_name, organization_id=org_id)
         if ca is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

@@ -5,6 +5,11 @@ from zoneinfo import ZoneInfo
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric.dsa import DSAPublicKey
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
+from cryptography.hazmat.primitives.asymmetric.ed448 import Ed448PublicKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.x509.oid import ExtendedKeyUsageOID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
@@ -22,6 +27,14 @@ from app.services.encryption import EncryptionService
 from app.services.exceptions import LeafCertNotAllowedError
 
 UTC = ZoneInfo("UTC")
+
+CertPublicKey = (
+    DSAPublicKey
+    | Ed25519PublicKey
+    | Ed448PublicKey
+    | EllipticCurvePublicKey
+    | RSAPublicKey
+)
 
 
 class CertificateService:
@@ -43,7 +56,7 @@ class CertificateService:
         san_dns_names: list[str] | None = None,
         san_ip_addresses: list[str] | None = None,
         san_email_addresses: list[str] | None = None,
-        public_key: object | None = None,
+        public_key: CertPublicKey | None = None,
     ) -> Certificate:
         """Create a new certificate signed by the specified CA."""
         key_size = key_size or settings.CERT_KEY_SIZE
