@@ -141,3 +141,23 @@ async def test_cleanup_expired_tokens(db: AsyncSession):
         select(RefreshToken).where(RefreshToken.token == "valid-rt")
     )
     assert result.scalar_one_or_none() is not None
+
+
+async def test_access_token_contains_jti_and_iat(db: AsyncSession):
+    import jwt
+
+    from app.core.config import settings
+    from app.services.user import UserService
+
+    user_service = UserService(db)
+    token = user_service.create_access_token(
+        data={"sub": "testuser", "id": 1, "role": "user"}
+    )
+    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+
+    assert "jti" in payload
+    assert isinstance(payload["jti"], str)
+    assert len(payload["jti"]) > 0
+
+    assert "iat" in payload
+    assert isinstance(payload["iat"], int)
