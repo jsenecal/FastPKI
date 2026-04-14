@@ -4,6 +4,7 @@ import pytest_asyncio
 from fastapi import HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.requests import Request
 
 from app.api.auth import login_for_access_token
 from app.api.deps import (
@@ -15,6 +16,19 @@ from app.api.deps import (
 from app.core.config import settings
 from app.db.models import User, UserRole
 from app.services.user import UserService
+
+
+def _make_request() -> Request:
+    """Create a minimal Starlette Request for use in unit tests."""
+    return Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "headers": [],
+            "path": "/api/v1/auth/token",
+            "client": ("127.0.0.1", 0),
+        }
+    )
 
 
 @pytest_asyncio.fixture
@@ -82,7 +96,9 @@ async def test_login_for_access_token_success(db: AsyncSession, auth_test_user: 
         username=auth_test_user.username, password="password123", scope=""
     )
 
-    token_response = await login_for_access_token(form_data=form_data, db=db)
+    token_response = await login_for_access_token(
+        request=_make_request(), form_data=form_data, db=db
+    )
 
     assert isinstance(token_response, dict)
     assert "access_token" in token_response
@@ -108,7 +124,9 @@ async def test_login_for_access_token_invalid_credentials(
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        await login_for_access_token(form_data=form_data, db=db)
+        await login_for_access_token(
+            request=_make_request(), form_data=form_data, db=db
+        )
 
     assert exc_info.value.status_code == 401
     assert "Incorrect username or password" in exc_info.value.detail

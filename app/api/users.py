@@ -244,6 +244,17 @@ async def update_user(
                 detail="Not enough permissions to change capabilities",
             )
 
+    # Only superusers can change organization assignments
+    if (
+        "organization_id" in user_in.model_fields_set
+        and user_in.organization_id != user.organization_id
+        and not is_superuser
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions to change organization assignment",
+        )
+
     # Regular users can only update their own profile
     if not (is_superuser or is_admin or is_self):
         raise HTTPException(
