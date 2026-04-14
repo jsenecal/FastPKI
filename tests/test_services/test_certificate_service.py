@@ -199,6 +199,202 @@ async def test_dual_purpose_cert_has_both_ekus(
     assert ExtendedKeyUsageOID.CLIENT_AUTH in ekus
 
 
+@pytest.mark.asyncio
+async def test_server_cert_has_san_from_common_name(
+    db: AsyncSession, test_ca: CertificateAuthority
+):
+    """Server certs should auto-populate SAN with common_name as DNS entry."""
+    cert_service = CertificateService(db)
+    cert = await cert_service.create_certificate(
+        ca_id=test_ca.id,
+        common_name="auto-san.example.com",
+        subject_dn="CN=auto-san.example.com,O=Test,C=US",
+        certificate_type=CertificateType.SERVER,
+    )
+
+    x509_cert = x509.load_pem_x509_certificate(cert.certificate.encode("utf-8"))
+    san_ext = x509_cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+    dns_names = san_ext.value.get_values_for_type(x509.DNSName)
+    assert "auto-san.example.com" in dns_names
+
+
+@pytest.mark.asyncio
+async def test_server_cert_with_explicit_sans(
+    db: AsyncSession, test_ca: CertificateAuthority
+):
+    """Server certs should support explicit DNS and IP SANs."""
+    cert_service = CertificateService(db)
+    cert = await cert_service.create_certificate(
+        ca_id=test_ca.id,
+        common_name="multi-san.example.com",
+        subject_dn="CN=multi-san.example.com,O=Test,C=US",
+        certificate_type=CertificateType.SERVER,
+        san_dns_names=["multi-san.example.com", "alt.example.com"],
+        san_ip_addresses=["10.0.0.1", "::1"],
+    )
+
+    x509_cert = x509.load_pem_x509_certificate(cert.certificate.encode("utf-8"))
+    san_ext = x509_cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+    dns_names = san_ext.value.get_values_for_type(x509.DNSName)
+    assert "multi-san.example.com" in dns_names
+    assert "alt.example.com" in dns_names
+
+    import ipaddress
+
+    ips = san_ext.value.get_values_for_type(x509.IPAddress)
+    assert ipaddress.IPv4Address("10.0.0.1") in ips
+    assert ipaddress.IPv6Address("::1") in ips
+
+
+@pytest.mark.asyncio
+async def test_wildcard_server_cert_san(
+    db: AsyncSession, test_ca: CertificateAuthority
+):
+    """Wildcard common_name should appear as DNS SAN."""
+    cert_service = CertificateService(db)
+    cert = await cert_service.create_certificate(
+        ca_id=test_ca.id,
+        common_name="*.example.com",
+        subject_dn="CN=*.example.com,O=Test,C=US",
+        certificate_type=CertificateType.SERVER,
+    )
+
+    x509_cert = x509.load_pem_x509_certificate(cert.certificate.encode("utf-8"))
+    san_ext = x509_cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+    dns_names = san_ext.value.get_values_for_type(x509.DNSName)
+    assert "*.example.com" in dns_names
+
+
+@pytest.mark.asyncio
+async def test_client_cert_with_email_san(
+    db: AsyncSession, test_ca: CertificateAuthority
+):
+    """Client certs should support email SANs."""
+    cert_service = CertificateService(db)
+    cert = await cert_service.create_certificate(
+        ca_id=test_ca.id,
+        common_name="user@example.com",
+        subject_dn="CN=user@example.com,O=Test,C=US",
+        certificate_type=CertificateType.CLIENT,
+        san_email_addresses=["user@example.com"],
+    )
+
+    x509_cert = x509.load_pem_x509_certificate(cert.certificate.encode("utf-8"))
+    san_ext = x509_cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+    emails = san_ext.value.get_values_for_type(x509.RFC822Name)
+    assert "user@example.com" in emails
+
+
+@pytest.mark.asyncio
+async def test_client_cert_auto_email_from_cn(
+    db: AsyncSession, test_ca: CertificateAuthority
+):
+    """Client certs should auto-add CN as email SAN if it looks like an email."""
+    cert_service = CertificateService(db)
+    cert = await cert_service.create_certificate(
+        ca_id=test_ca.id,
+        common_name="auto@example.com",
+        subject_dn="CN=auto@example.com,O=Test,C=US",
+        certificate_type=CertificateType.CLIENT,
+    )
+
+    x509_cert = x509.load_pem_x509_certificate(cert.certificate.encode("utf-8"))
+    san_ext = x509_cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+    emails = san_ext.value.get_values_for_type(x509.RFC822Name)
+    assert "auto@example.com" in emails
+
+
+@pytest.mark.asyncio
+async def test_dual_purpose_cert_supports_all_san_types(
+    db: AsyncSession, test_ca: CertificateAuthority
+):
+    """Dual-purpose certs should support DNS, IP, and email SANs."""
+    cert_service = CertificateService(db)
+    cert = await cert_service.create_certificate(
+        ca_id=test_ca.id,
+        common_name="dual.example.com",
+        subject_dn="CN=dual.example.com,O=Test,C=US",
+        certificate_type=CertificateType.DUAL_PURPOSE,
+        san_dns_names=["dual.example.com"],
+        san_ip_addresses=["192.168.1.1"],
+        san_email_addresses=["admin@example.com"],
+    )
+
+    x509_cert = x509.load_pem_x509_certificate(cert.certificate.encode("utf-8"))
+    san_ext = x509_cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+    assert "dual.example.com" in san_ext.value.get_values_for_type(x509.DNSName)
+    assert "admin@example.com" in san_ext.value.get_values_for_type(x509.RFC822Name)
+
+    import ipaddress
+
+    ips = san_ext.value.get_values_for_type(x509.IPAddress)
+    assert ipaddress.IPv4Address("192.168.1.1") in ips
+
+
+@pytest.mark.asyncio
+async def test_server_cert_rejects_email_san(
+    db: AsyncSession, test_ca: CertificateAuthority
+):
+    """Server certs should reject email SANs."""
+    cert_service = CertificateService(db)
+    with pytest.raises(ValueError, match=r"[Ee]mail"):
+        await cert_service.create_certificate(
+            ca_id=test_ca.id,
+            common_name="server.example.com",
+            subject_dn="CN=server.example.com,O=Test,C=US",
+            certificate_type=CertificateType.SERVER,
+            san_email_addresses=["bad@example.com"],
+        )
+
+
+@pytest.mark.asyncio
+async def test_client_cert_rejects_dns_san(
+    db: AsyncSession, test_ca: CertificateAuthority
+):
+    """Client certs should reject DNS SANs."""
+    cert_service = CertificateService(db)
+    with pytest.raises(ValueError, match="DNS"):
+        await cert_service.create_certificate(
+            ca_id=test_ca.id,
+            common_name="client@example.com",
+            subject_dn="CN=client@example.com,O=Test,C=US",
+            certificate_type=CertificateType.CLIENT,
+            san_dns_names=["bad.example.com"],
+        )
+
+
+@pytest.mark.asyncio
+async def test_client_cert_rejects_ip_san(
+    db: AsyncSession, test_ca: CertificateAuthority
+):
+    """Client certs should reject IP SANs."""
+    cert_service = CertificateService(db)
+    with pytest.raises(ValueError, match="IP"):
+        await cert_service.create_certificate(
+            ca_id=test_ca.id,
+            common_name="client@example.com",
+            subject_dn="CN=client@example.com,O=Test,C=US",
+            certificate_type=CertificateType.CLIENT,
+            san_ip_addresses=["10.0.0.1"],
+        )
+
+
+@pytest.mark.asyncio
+async def test_ca_cert_no_auto_san(db: AsyncSession, test_ca: CertificateAuthority):
+    """CA type certs should not get auto-populated SANs."""
+    cert_service = CertificateService(db)
+    cert = await cert_service.create_certificate(
+        ca_id=test_ca.id,
+        common_name="subca.example.com",
+        subject_dn="CN=subca.example.com,O=Test,C=US",
+        certificate_type=CertificateType.CA,
+    )
+
+    x509_cert = x509.load_pem_x509_certificate(cert.certificate.encode("utf-8"))
+    with pytest.raises(x509.ExtensionNotFound):
+        x509_cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+
+
 def test_parse_subject_dn_escaped_comma():
     """Test that escaped commas in DN values are handled correctly."""
     name = CAService.parse_subject_dn("CN=Doe\\, John,O=Test Org,C=US")

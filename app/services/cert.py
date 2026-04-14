@@ -1,3 +1,5 @@
+import ipaddress
+import re
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -38,6 +40,9 @@ class CertificateService:
         organization_id: int | None = None,
         created_by_user_id: int | None = None,
         base_url: str | None = None,
+        san_dns_names: list[str] | None = None,
+        san_ip_addresses: list[str] | None = None,
+        san_email_addresses: list[str] | None = None,
     ) -> Certificate:
         """Create a new certificate signed by the specified CA."""
         key_size = key_size or settings.CERT_KEY_SIZE
@@ -130,6 +135,61 @@ class CertificateService:
                 x509.ExtendedKeyUsage(extended_key_usages),
                 critical=False,
             )
+
+        # Build Subject Alternative Name (SAN) extension
+        if certificate_type != CertificateType.CA:
+            san_names: list[x509.GeneralName] = []
+
+            # Validate SAN type restrictions per cert type
+            if certificate_type == CertificateType.SERVER:
+                if san_email_addresses:
+                    raise ValueError(  # noqa: TRY003
+                        "Email SANs are not allowed for server certificates"
+                    )
+            elif certificate_type == CertificateType.CLIENT:
+                if san_dns_names:
+                    raise ValueError(  # noqa: TRY003
+                        "DNS SANs are not allowed for client certificates"
+                    )
+                if san_ip_addresses:
+                    raise ValueError(  # noqa: TRY003
+                        "IP SANs are not allowed for client certificates"
+                    )
+
+            # Auto-populate from common_name if no explicit SANs provided
+            if certificate_type in (
+                CertificateType.SERVER,
+                CertificateType.DUAL_PURPOSE,
+            ):
+                if not san_dns_names:
+                    san_dns_names = [common_name]
+            elif (
+                certificate_type == CertificateType.CLIENT
+                and not san_email_addresses
+                and re.match(r"^[^@]+@[^@]+\.[^@]+$", common_name)
+            ):
+                san_email_addresses = [common_name]
+
+            # Add DNS names
+            if san_dns_names:
+                for name in san_dns_names:
+                    san_names.append(x509.DNSName(name))
+
+            # Add IP addresses
+            if san_ip_addresses:
+                for addr in san_ip_addresses:
+                    san_names.append(x509.IPAddress(ipaddress.ip_address(addr)))
+
+            # Add email addresses
+            if san_email_addresses:
+                for email in san_email_addresses:
+                    san_names.append(x509.RFC822Name(email))
+
+            if san_names:
+                cert_builder = cert_builder.add_extension(
+                    x509.SubjectAlternativeName(san_names),
+                    critical=False,
+                )
 
         # Add Subject Key Identifier
         cert_builder = cert_builder.add_extension(
