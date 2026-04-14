@@ -4,6 +4,7 @@ import os
 from collections.abc import AsyncGenerator
 from datetime import timedelta
 
+import pytest
 import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
@@ -62,6 +63,16 @@ async def event_loop():
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
     loop.close()
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """Reset the rate limiter storage before each test to avoid cross-test pollution."""
+    from app.api.auth import limiter
+
+    limiter.reset()
+    yield
+    limiter.reset()
 
 
 @pytest_asyncio.fixture(scope="function")

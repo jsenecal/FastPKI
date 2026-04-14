@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
     ALGORITHM: str = "HS256"
 
+    # Rate limiting
+    AUTH_RATE_LIMIT: str = "5/minute"
+
     @field_validator("SECRET_KEY")
     def validate_secret_key(cls, v: str) -> str:  # noqa: N805
         if v == "supersecretkey":
@@ -83,7 +86,19 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
 
     # CORS settings
-    BACKEND_CORS_ORIGINS: list[str] = ["*"]
+    BACKEND_CORS_ORIGINS: list[str] = []
+
+    @field_validator("BACKEND_CORS_ORIGINS")
+    def validate_cors_origins(cls, v: list[str]) -> list[str]:  # noqa: N805
+        if "*" in v:
+            import warnings
+
+            warnings.warn(
+                "BACKEND_CORS_ORIGINS contains '*'. This allows any website to "
+                "make authenticated cross-origin requests. Do not use in production.",
+                stacklevel=1,
+            )
+        return v
 
     # Registration settings
     ALLOW_UNAUTHENTICATED_REGISTRATION: bool = False

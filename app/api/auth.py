@@ -1,8 +1,10 @@
 from datetime import timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import logger, settings
@@ -13,10 +15,13 @@ from app.services.audit import AuditService
 from app.services.user import UserService
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/token", response_model=Token)
+@limiter.limit(settings.AUTH_RATE_LIMIT)
 async def login_for_access_token(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),  # noqa: B008
     db: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> Any:
