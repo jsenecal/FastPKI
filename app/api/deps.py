@@ -33,6 +33,13 @@ async def get_current_user(
     except (InvalidTokenError, ValidationError) as err:
         raise credentials_exception from err
 
+    if token_data.jti:
+        from app.services.token import TokenService
+
+        token_service = TokenService(db)
+        if await token_service.is_token_blocklisted(token_data.jti):
+            raise credentials_exception
+
     from app.services.user import UserService
 
     user_service = UserService(db)
@@ -40,6 +47,14 @@ async def get_current_user(
 
     if user is None:
         raise credentials_exception
+
+    if (
+        user.tokens_invalidated_at
+        and token_data.iat
+        and token_data.iat < int(user.tokens_invalidated_at.timestamp())
+    ):
+        raise credentials_exception
+
     return user
 
 
@@ -80,3 +95,12 @@ async def get_current_active_admin_user(
             detail="The user doesn't have sufficient privileges",
         )
     return current_user
+
+
+async def get_current_user_with_token(
+    db: AsyncSession = Depends(get_session),  # noqa: B008
+    token: str = Depends(oauth2_scheme),
+) -> tuple[User, str]:
+    """Validate access token and return current user with the raw token."""
+    user = await get_current_user(db=db, token=token)
+    return user, token
