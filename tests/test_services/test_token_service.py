@@ -143,6 +143,56 @@ async def test_cleanup_expired_tokens(db: AsyncSession):
     assert result.scalar_one_or_none() is not None
 
 
+async def test_password_change_invalidates_tokens(db: AsyncSession):
+    from app.db.models import UserRole
+    from app.services.user import UserService
+
+    user_service = UserService(db)
+    user = await user_service.create_user(
+        username="pwchangeuser",
+        email="pwchange@example.com",
+        password="password123",
+        role=UserRole.USER,
+    )
+
+    token_service = TokenService(db)
+    refresh = await token_service.create_refresh_token(user_id=user.id)
+
+    assert user.tokens_invalidated_at is None
+
+    updated_user = await user_service.update_user(user.id, password="newpassword456")
+
+    assert updated_user is not None
+    assert updated_user.tokens_invalidated_at is not None
+
+    result = await token_service.validate_refresh_token(refresh)
+    assert result is None
+
+
+async def test_deactivation_invalidates_tokens(db: AsyncSession):
+    from app.db.models import UserRole
+    from app.services.user import UserService
+
+    user_service = UserService(db)
+    user = await user_service.create_user(
+        username="deactuser",
+        email="deact@example.com",
+        password="password123",
+        role=UserRole.USER,
+    )
+
+    token_service = TokenService(db)
+    refresh = await token_service.create_refresh_token(user_id=user.id)
+
+    updated_user = await user_service.update_user(user.id, is_active=False)
+
+    assert updated_user is not None
+    assert updated_user.tokens_invalidated_at is not None
+
+    result = await token_service.validate_refresh_token(refresh)
+    assert result is None
+
+
 async def test_access_token_contains_jti_and_iat(db: AsyncSession):
     import jwt
 

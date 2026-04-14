@@ -124,6 +124,17 @@ class UserService:
         if can_delete_ca is not None:
             user.can_delete_ca = can_delete_ca
 
+        should_invalidate_tokens = password is not None or (
+            is_active is not None and not is_active
+        )
+
+        if should_invalidate_tokens:
+            user.tokens_invalidated_at = datetime.now(UTC)
+            from app.services.token import TokenService
+
+            token_service = TokenService(self.db)
+            await token_service.revoke_all_user_refresh_tokens(user_id=user_id)
+
         self.db.add(user)
         await self.db.commit()
         await self.db.refresh(user)
