@@ -12,6 +12,9 @@ class CertificateCreate(BaseModel):
     key_size: int | None = None
     valid_days: int | None = None
     include_private_key: bool = True
+    san_dns_names: list[str] | None = None
+    san_ip_addresses: list[str] | None = None
+    san_email_addresses: list[str] | None = None
 
 
 class CertificateResponse(BaseModel):

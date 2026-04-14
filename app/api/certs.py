@@ -55,6 +55,9 @@ async def create_certificate(
             organization_id=current_user.organization_id,
             created_by_user_id=current_user.id,
             base_url=base_url,
+            san_dns_names=cert_in.san_dns_names,
+            san_ip_addresses=cert_in.san_ip_addresses,
+            san_email_addresses=cert_in.san_email_addresses,
         )
     except LeafCertNotAllowedError as e:
         raise HTTPException(

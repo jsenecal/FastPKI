@@ -93,6 +93,15 @@ def create(
     no_private_key: bool = typer.Option(
         False, "--no-private-key", help="Don't generate private key"
     ),
+    san_dns: list[str] | None = typer.Option(
+        None, "--san-dns", help="DNS SAN entry (repeatable)"
+    ),
+    san_ip: list[str] | None = typer.Option(
+        None, "--san-ip", help="IP address SAN entry (repeatable)"
+    ),
+    san_email: list[str] | None = typer.Option(
+        None, "--san-email", help="Email SAN entry (repeatable)"
+    ),
 ) -> None:
     """Issue a new certificate."""
     payload: dict[str, object] = {
@@ -107,6 +116,12 @@ def create(
     vd = valid_days or get_default("cert_valid_days")
     if vd:
         payload["valid_days"] = int(vd)
+    if san_dns:
+        payload["san_dns_names"] = san_dns
+    if san_ip:
+        payload["san_ip_addresses"] = san_ip
+    if san_email:
+        payload["san_email_addresses"] = san_email
 
     data = client.post(f"/api/v1/certificates/?ca_id={ca_id}", json=payload).json()
     fields = [*CERT_DETAIL_FIELDS, ("Certificate", "certificate")]
