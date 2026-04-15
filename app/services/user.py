@@ -133,7 +133,9 @@ class UserService:
             from app.services.token import TokenService
 
             token_service = TokenService(self.db)
-            await token_service.revoke_all_user_refresh_tokens(user_id=user_id)
+            await token_service.revoke_all_user_refresh_tokens(
+                user_id=user_id, commit=False
+            )
 
         self.db.add(user)
         await self.db.commit()

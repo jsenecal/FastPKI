@@ -64,20 +64,20 @@ class TokenService:
     async def validate_and_revoke_refresh_token(
         self, token: str
     ) -> RefreshToken | None:
-        """Atomically validate and revoke a refresh token."""
+        """Atomically validate and revoke a refresh token via single UPDATE."""
         now = datetime.now(UTC)
         result = await self.db.execute(
-            select(RefreshToken).where(
-                RefreshToken.token_hash == _hash_token(token),
+            update(RefreshToken)
+            .where(
+                RefreshToken.token_hash == _hash_token(token),  # type: ignore[arg-type]
                 RefreshToken.revoked.is_(False),  # type: ignore[attr-defined]
-                RefreshToken.expires_at > now,
+                RefreshToken.expires_at > now,  # type: ignore[arg-type]
             )
+            .values(revoked=True)
+            .returning(RefreshToken)
         )
         refresh_token = result.scalar_one_or_none()
-        if refresh_token is not None:
-            refresh_token.revoked = True
-            self.db.add(refresh_token)
-            await self.db.commit()
+        await self.db.commit()
         return refresh_token
 
     async def revoke_refresh_token(self, token: str) -> None:
@@ -90,7 +90,9 @@ class TokenService:
             self.db.add(refresh_token)
             await self.db.commit()
 
-    async def revoke_all_user_refresh_tokens(self, user_id: int) -> None:
+    async def revoke_all_user_refresh_tokens(
+        self, user_id: int, *, commit: bool = True
+    ) -> None:
         await self.db.execute(
             update(RefreshToken)
             .where(
@@ -99,7 +101,8 @@ class TokenService:
             )
             .values(revoked=True)
         )
-        await self.db.commit()
+        if commit:
+            await self.db.commit()
 
     async def cleanup_expired_tokens(self) -> int:
         now = datetime.now(UTC)

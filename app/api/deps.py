@@ -58,7 +58,7 @@ async def get_current_user(
         invalidated_at = user.tokens_invalidated_at
         if invalidated_at.tzinfo is None:
             invalidated_at = invalidated_at.replace(tzinfo=UTC)
-        if token_data.iat < int(invalidated_at.timestamp()):
+        if token_data.iat < invalidated_at.timestamp():
             raise credentials_exception
 
     return user

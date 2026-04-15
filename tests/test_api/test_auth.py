@@ -376,6 +376,9 @@ async def test_invalidate_endpoint(client, db):
     response = await client.get("/api/v1/users/me", headers=headers2)
     assert response.status_code == 401
 
+    # Wait so new token's iat is after tokens_invalidated_at
+    await asyncio.sleep(1.1)
+
     # But user can still log in again
     login3 = await client.post(
         "/api/v1/auth/token",

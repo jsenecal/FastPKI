@@ -50,6 +50,8 @@ async def token_gc_loop() -> None:
                 deleted = await token_service.cleanup_expired_tokens()
                 if deleted > 0:
                     logger.info("Token GC: cleaned up %d expired entries", deleted)
+        except asyncio.CancelledError:
+            raise
         except Exception:
             logger.exception("Token GC: error during cleanup")
 
