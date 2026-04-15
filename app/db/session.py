@@ -22,9 +22,11 @@ async def create_db_and_tables() -> None:
         await conn.run_sync(SQLModel.metadata.create_all)
 
 
+async_session_factory = async_sessionmaker(
+    engine, class_=AsyncSession, expire_on_commit=False
+)
+
+
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    session_factory = async_sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
-    async with session_factory() as session:
+    async with async_session_factory() as session:
         yield session
