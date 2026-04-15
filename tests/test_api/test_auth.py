@@ -385,3 +385,42 @@ async def test_invalidate_endpoint(client, db):
     headers3 = {"Authorization": f"Bearer {login3.json()['access_token']}"}
     response = await client.get("/api/v1/users/me", headers=headers3)
     assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_with_deactivated_user(client, db):
+    """Refresh should fail if the user was deactivated after getting a token."""
+    user_data = {
+        "username": "deactrefresh",
+        "email": "deactrefresh@example.com",
+        "password": "password123",
+    }
+    create_resp = await client.post("/api/v1/users/", json=user_data)
+    user_id = create_resp.json()["id"]
+
+    await client.post(
+        "/api/v1/auth/token",
+        data={"username": "deactrefresh", "password": "password123"},
+    )
+    # Deactivate user directly via DB
+    from sqlmodel import select
+
+    from app.db.models import User
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one()
+    user.is_active = False
+    db.add(user)
+    await db.commit()
+
+    # Create a new refresh token for this user (simulating one that wasn't revoked)
+    from app.services.token import TokenService
+
+    token_service = TokenService(db)
+    refresh = await token_service.create_refresh_token(user_id=user_id)
+
+    response = await client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": refresh},
+    )
+    assert response.status_code == 401

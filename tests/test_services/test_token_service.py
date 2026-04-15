@@ -193,6 +193,35 @@ async def test_deactivation_invalidates_tokens(db: AsyncSession):
     assert result is None
 
 
+async def test_token_gc_loop_runs_cleanup():
+    """Test the GC loop calls cleanup and handles cancellation."""
+    import asyncio
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    mock_token_service = AsyncMock()
+    mock_token_service.cleanup_expired_tokens.return_value = 3
+
+    mock_session = AsyncMock()
+    mock_session_cm = AsyncMock()
+    mock_session_cm.__aenter__.return_value = mock_session
+    mock_session_cm.__aexit__.return_value = False
+    mock_factory = MagicMock(return_value=mock_session_cm)
+
+    with (
+        patch("app.main.asyncio.sleep", side_effect=[None, asyncio.CancelledError]),
+        patch("app.db.session.async_session_factory", mock_factory),
+        patch("app.services.token.TokenService", return_value=mock_token_service),
+    ):
+        import contextlib
+
+        from app.main import token_gc_loop
+
+        with contextlib.suppress(asyncio.CancelledError):
+            await token_gc_loop()
+
+    mock_token_service.cleanup_expired_tokens.assert_called_once()
+
+
 async def test_access_token_contains_jti_and_iat(db: AsyncSession):
     import jwt
 
