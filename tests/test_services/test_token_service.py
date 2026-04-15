@@ -49,7 +49,7 @@ async def test_create_refresh_token(db: AsyncSession, test_user):
     from zoneinfo import ZoneInfo
 
     token = RefreshToken(
-        token="opaque-refresh-token-abc",
+        token_hash="abc123hash",
         user_id=test_user.id,
         expires_at=datetime.now(ZoneInfo("UTC")),
     )
@@ -58,7 +58,7 @@ async def test_create_refresh_token(db: AsyncSession, test_user):
     await db.refresh(token)
 
     assert token.id is not None
-    assert token.token == "opaque-refresh-token-abc"
+    assert token.token_hash == "abc123hash"
     assert token.revoked is False
     assert token.created_at is not None
 
@@ -135,11 +135,15 @@ async def test_cleanup_expired_tokens(db: AsyncSession, test_user):
     valid_bl = BlocklistedToken(jti="valid-jti", exp=now + timedelta(hours=1))
     db.add(valid_bl)
     expired_rt = RefreshToken(
-        token="expired-rt", user_id=test_user.id, expires_at=now - timedelta(hours=1)
+        token_hash="expired-rt-hash",
+        user_id=test_user.id,
+        expires_at=now - timedelta(hours=1),
     )
     db.add(expired_rt)
     valid_rt = RefreshToken(
-        token="valid-rt", user_id=test_user.id, expires_at=now + timedelta(hours=1)
+        token_hash="valid-rt-hash",
+        user_id=test_user.id,
+        expires_at=now + timedelta(hours=1),
     )
     db.add(valid_rt)
     await db.commit()
@@ -152,7 +156,7 @@ async def test_cleanup_expired_tokens(db: AsyncSession, test_user):
     )
     assert result.scalar_one_or_none() is None
     result = await db.execute(
-        select(RefreshToken).where(RefreshToken.token == "expired-rt")
+        select(RefreshToken).where(RefreshToken.token_hash == "expired-rt-hash")
     )
     assert result.scalar_one_or_none() is None
     result = await db.execute(
@@ -160,7 +164,7 @@ async def test_cleanup_expired_tokens(db: AsyncSession, test_user):
     )
     assert result.scalar_one_or_none() is not None
     result = await db.execute(
-        select(RefreshToken).where(RefreshToken.token == "valid-rt")
+        select(RefreshToken).where(RefreshToken.token_hash == "valid-rt-hash")
     )
     assert result.scalar_one_or_none() is not None
 

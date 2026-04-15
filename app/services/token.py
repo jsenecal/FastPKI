@@ -1,3 +1,4 @@
+import hashlib
 import secrets
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -11,6 +12,10 @@ from app.core.config import settings
 from app.db.models import BlocklistedToken, RefreshToken
 
 UTC = ZoneInfo("UTC")
+
+
+def _hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 class TokenService:
@@ -36,7 +41,11 @@ class TokenService:
         expires_at = datetime.now(UTC) + timedelta(
             minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES
         )
-        token = RefreshToken(token=token_str, user_id=user_id, expires_at=expires_at)
+        token = RefreshToken(
+            token_hash=_hash_token(token_str),
+            user_id=user_id,
+            expires_at=expires_at,
+        )
         self.db.add(token)
         await self.db.commit()
         return token_str
@@ -45,7 +54,7 @@ class TokenService:
         now = datetime.now(UTC)
         result = await self.db.execute(
             select(RefreshToken).where(
-                RefreshToken.token == token,
+                RefreshToken.token_hash == _hash_token(token),
                 RefreshToken.revoked.is_(False),  # type: ignore[attr-defined]
                 RefreshToken.expires_at > now,
             )
@@ -59,7 +68,7 @@ class TokenService:
         now = datetime.now(UTC)
         result = await self.db.execute(
             select(RefreshToken).where(
-                RefreshToken.token == token,
+                RefreshToken.token_hash == _hash_token(token),
                 RefreshToken.revoked.is_(False),  # type: ignore[attr-defined]
                 RefreshToken.expires_at > now,
             )
@@ -73,7 +82,7 @@ class TokenService:
 
     async def revoke_refresh_token(self, token: str) -> None:
         result = await self.db.execute(
-            select(RefreshToken).where(RefreshToken.token == token)
+            select(RefreshToken).where(RefreshToken.token_hash == _hash_token(token))
         )
         refresh_token = result.scalar_one_or_none()
         if refresh_token is not None:

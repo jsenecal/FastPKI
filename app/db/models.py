@@ -265,7 +265,7 @@ class RefreshToken(SQLModel, table=True):
     __tablename__ = "refresh_tokens"
 
     id: int | None = Field(default=None, primary_key=True)
-    token: str = Field(index=True, unique=True)
+    token_hash: str = Field(index=True, unique=True)
     user_id: int = Field(foreign_key="users.id", index=True)
     expires_at: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False)
