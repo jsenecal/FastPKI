@@ -62,7 +62,7 @@ class TokenService:
         return result.scalar_one_or_none()
 
     async def validate_and_revoke_refresh_token(
-        self, token: str
+        self, token: str, *, commit: bool = True
     ) -> RefreshToken | None:
         """Atomically validate and revoke a refresh token via single UPDATE."""
         now = datetime.now(UTC)
@@ -77,7 +77,8 @@ class TokenService:
             .returning(RefreshToken)
         )
         refresh_token = result.scalar_one_or_none()
-        await self.db.commit()
+        if commit:
+            await self.db.commit()
         return refresh_token
 
     async def revoke_refresh_token(self, token: str) -> None:

@@ -228,7 +228,7 @@ async def test_token_gc_loop_runs_cleanup():
     mock_factory = MagicMock(return_value=mock_session_cm)
 
     with (
-        patch("app.main.asyncio.sleep", side_effect=[None, asyncio.CancelledError]),
+        patch("app.main.asyncio.sleep", side_effect=asyncio.CancelledError),
         patch("app.db.session.async_session_factory", mock_factory),
         patch("app.services.token.TokenService", return_value=mock_token_service),
     ):

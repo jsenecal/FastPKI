@@ -43,7 +43,6 @@ async def token_gc_loop() -> None:
     from app.services.token import TokenService
 
     while True:
-        await asyncio.sleep(3600)  # Run every hour
         try:
             async with async_session_factory() as session:
                 token_service = TokenService(session)
@@ -54,6 +53,7 @@ async def token_gc_loop() -> None:
             raise
         except Exception:
             logger.exception("Token GC: error during cleanup")
+        await asyncio.sleep(3600)  # Run every hour
 
 
 @asynccontextmanager

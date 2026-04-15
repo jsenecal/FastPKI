@@ -17,13 +17,8 @@ UTC = ZoneInfo("UTC")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/token")
 
 
-async def get_current_user(
-    db: AsyncSession = Depends(get_session),  # noqa: B008
-    token: str = Depends(oauth2_scheme),
-) -> User:
-    """
-    Validate access token and return current user.
-    """
+async def _validate_token(db: AsyncSession, token: str) -> tuple[User, TokenPayload]:
+    """Decode and validate an access token, returning user and payload."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -61,15 +56,30 @@ async def get_current_user(
         if token_data.iat < invalidated_at.timestamp():
             raise credentials_exception
 
+    return user, token_data
+
+
+async def get_current_user(
+    db: AsyncSession = Depends(get_session),  # noqa: B008
+    token: str = Depends(oauth2_scheme),
+) -> User:
+    """Validate access token and return current user."""
+    user, _payload = await _validate_token(db, token)
     return user
+
+
+async def get_current_user_with_payload(
+    db: AsyncSession = Depends(get_session),  # noqa: B008
+    token: str = Depends(oauth2_scheme),
+) -> tuple[User, TokenPayload]:
+    """Validate access token and return current user with parsed payload."""
+    return await _validate_token(db, token)
 
 
 async def get_current_active_user(
     current_user: User = Depends(get_current_user),  # noqa: B008
 ) -> User:
-    """
-    Get current active user.
-    """
+    """Get current active user."""
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
@@ -78,9 +88,7 @@ async def get_current_active_user(
 async def get_current_active_superuser(
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> User:
-    """
-    Get current active superuser.
-    """
+    """Get current active superuser."""
     if current_user.role != UserRole.SUPERUSER:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -92,21 +100,10 @@ async def get_current_active_superuser(
 async def get_current_active_admin_user(
     current_user: User = Depends(get_current_active_user),  # noqa: B008
 ) -> User:
-    """
-    Get current active user with admin privileges (ADMIN or SUPERUSER).
-    """
+    """Get current active user with admin privileges (ADMIN or SUPERUSER)."""
     if current_user.role not in [UserRole.ADMIN, UserRole.SUPERUSER]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="The user doesn't have sufficient privileges",
         )
     return current_user
-
-
-async def get_current_user_with_token(
-    db: AsyncSession = Depends(get_session),  # noqa: B008
-    token: str = Depends(oauth2_scheme),
-) -> tuple[User, str]:
-    """Validate access token and return current user with the raw token."""
-    user = await get_current_user(db=db, token=token)
-    return user, token

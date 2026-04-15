@@ -95,6 +95,8 @@ The JWT payload contains:
 | `id` | User ID |
 | `role` | User role (`superuser`, `admin`, `user`) |
 | `exp` | Expiration timestamp |
+| `iat` | Issued-at timestamp (used for mass invalidation) |
+| `jti` | Unique token ID (used for per-token blocklisting) |
 
 ## Unauthenticated Endpoints
 

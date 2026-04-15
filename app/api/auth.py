@@ -2,18 +2,17 @@ from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
-import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_active_user, get_current_user_with_token
+from app.api.deps import get_current_active_user, get_current_user_with_payload
 from app.core.config import logger, settings
 from app.db.models import AuditAction, User
 from app.db.session import get_session
-from app.schemas.user import RefreshTokenRequest, Token
+from app.schemas.user import RefreshTokenRequest, Token, TokenPayload
 from app.services.audit import AuditService
 from app.services.token import TokenService
 from app.services.user import UserService
@@ -112,10 +111,12 @@ async def refresh_access_token(
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
     body: RefreshTokenRequest,
-    user_and_token: tuple[User, str] = Depends(get_current_user_with_token),
+    user_and_payload: tuple[User, TokenPayload] = Depends(
+        get_current_user_with_payload
+    ),
     db: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> None:
-    current_user, raw_token = user_and_token
+    current_user, token_data = user_and_payload
 
     token_service = TokenService(db)
 
@@ -126,13 +127,9 @@ async def logout(
             detail="Refresh token does not belong to current user",
         )
 
-    payload = jwt.decode(
-        raw_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
-    )
-
-    if payload.get("jti"):
-        exp = datetime.fromtimestamp(payload["exp"], tz=ZoneInfo("UTC"))
-        await token_service.blocklist_token(jti=payload["jti"], exp=exp)
+    if token_data.jti and token_data.exp:
+        exp = datetime.fromtimestamp(token_data.exp, tz=ZoneInfo("UTC"))
+        await token_service.blocklist_token(jti=token_data.jti, exp=exp)
 
     await token_service.revoke_refresh_token(body.refresh_token)
 
