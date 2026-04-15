@@ -63,7 +63,7 @@ Each call to `POST /api/v1/auth/refresh` consumes the submitted refresh token an
 
 ### Logout (Single Session)
 
-`POST /api/v1/auth/logout` invalidates the refresh token associated with the current session. The caller's access token remains valid until it expires naturally (up to 15 minutes), but no new access token can be obtained from that session.
+`POST /api/v1/auth/logout` invalidates the refresh token associated with the current session and immediately revokes the caller's access token by adding it to the blocklist. Both the access token and refresh token become unusable as soon as logout completes.
 
 ### Invalidate All Sessions
 

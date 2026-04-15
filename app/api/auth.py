@@ -77,15 +77,15 @@ async def refresh_access_token(
     db: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> Any:
     token_service = TokenService(db)
-    refresh_token = await token_service.validate_refresh_token(body.refresh_token)
+    refresh_token = await token_service.validate_and_revoke_refresh_token(
+        body.refresh_token
+    )
 
     if not refresh_token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token",
         )
-
-    await token_service.revoke_refresh_token(body.refresh_token)
 
     user_service = UserService(db)
     user = await user_service.get_user_by_id(refresh_token.user_id)
@@ -115,13 +115,20 @@ async def logout(
     user_and_token: tuple[User, str] = Depends(get_current_user_with_token),
     db: AsyncSession = Depends(get_session),  # noqa: B008
 ) -> None:
-    _current_user, raw_token = user_and_token
+    current_user, raw_token = user_and_token
+
+    token_service = TokenService(db)
+
+    refresh_token = await token_service.validate_refresh_token(body.refresh_token)
+    if refresh_token and refresh_token.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Refresh token does not belong to current user",
+        )
 
     payload = jwt.decode(
         raw_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
     )
-
-    token_service = TokenService(db)
 
     if payload.get("jti"):
         exp = datetime.fromtimestamp(payload["exp"], tz=ZoneInfo("UTC"))

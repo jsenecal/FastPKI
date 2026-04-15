@@ -52,7 +52,9 @@ async def get_current_user(
     if user is None:
         raise credentials_exception
 
-    if user.tokens_invalidated_at and token_data.iat:
+    if user.tokens_invalidated_at:
+        if token_data.iat is None:
+            raise credentials_exception
         invalidated_at = user.tokens_invalidated_at
         if invalidated_at.tzinfo is None:
             invalidated_at = invalidated_at.replace(tzinfo=UTC)

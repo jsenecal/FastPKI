@@ -26,7 +26,7 @@ Obtain a JWT access token.
 {
     "access_token": "eyJ...",
     "token_type": "bearer",
-    "refresh_token": "eyJ..."
+    "refresh_token": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4..."
 }
 ```
 
@@ -51,7 +51,7 @@ Exchange a refresh token for a new access token and refresh token. The submitted
 {
     "access_token": "eyJ...",
     "token_type": "bearer",
-    "refresh_token": "eyJ..."
+    "refresh_token": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4..."
 }
 ```
 
@@ -61,11 +61,11 @@ Exchange a refresh token for a new access token and refresh token. The submitted
 
 ### `POST /auth/logout`
 
-Invalidate the refresh token associated with the current session.
+Invalidate the refresh token and access token associated with the current session.
 
 - **Auth required:** Yes (Bearer token)
 
-**Response** `200`: `{"message": "Successfully logged out"}`
+**Response** `204`: No content.
 
 **Errors:** `401` — not authenticated.
 
@@ -77,7 +77,7 @@ Invalidate all refresh tokens for the authenticated user, signing out every acti
 
 - **Auth required:** Yes (Bearer token)
 
-**Response** `200`: `{"message": "All sessions invalidated"}`
+**Response** `204`: No content.
 
 **Errors:** `401` — not authenticated.
 
