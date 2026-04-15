@@ -48,13 +48,42 @@ curl -s http://localhost:8000/api/v1/cas/ \
   -H "Authorization: Bearer $TOKEN"
 ```
 
+## Token Lifecycle
+
+FastPKI issues short-lived access tokens and long-lived refresh tokens.
+
+| Token | Default TTL | Configurable via |
+|-------|-------------|-----------------|
+| Access token | 15 minutes | `ACCESS_TOKEN_EXPIRE_MINUTES` |
+| Refresh token | 24 hours (1440 min) | `REFRESH_TOKEN_EXPIRE_MINUTES` |
+
+### Token Rotation on Refresh
+
+Each call to `POST /api/v1/auth/refresh` consumes the submitted refresh token and issues a new access token together with a new refresh token. The old refresh token is immediately invalidated, preventing replay attacks.
+
+### Logout (Single Session)
+
+`POST /api/v1/auth/logout` invalidates the refresh token associated with the current session. The caller's access token remains valid until it expires naturally (up to 15 minutes), but no new access token can be obtained from that session.
+
+### Invalidate All Sessions
+
+`POST /api/v1/auth/invalidate` invalidates **all** refresh tokens belonging to the authenticated user. Use this to force sign-out from every device or client at once.
+
+### Automatic Revocation
+
+Refresh tokens are automatically invalidated in the following situations:
+
+- **Password change** — all existing refresh tokens for the user are revoked when the password is updated.
+- **Account deactivation** — all refresh tokens are revoked when a user's `is_active` flag is set to `false`.
+
 ## Token Details
 
 | Property | Value |
 |----------|-------|
 | Algorithm | HS256 (configurable via `ALGORITHM`) |
 | Signing key | `SECRET_KEY` environment variable |
-| Expiration | `ACCESS_TOKEN_EXPIRE_MINUTES` (default 1440 = 24 hours) |
+| Access token expiration | `ACCESS_TOKEN_EXPIRE_MINUTES` (default 15 minutes) |
+| Refresh token expiration | `REFRESH_TOKEN_EXPIRE_MINUTES` (default 1440 minutes = 24 hours) |
 
 ### Token Payload
 

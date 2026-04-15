@@ -25,11 +25,61 @@ Obtain a JWT access token.
 ```json
 {
     "access_token": "eyJ...",
-    "token_type": "bearer"
+    "token_type": "bearer",
+    "refresh_token": "eyJ..."
 }
 ```
 
 **Errors:** `401` — incorrect credentials.
+
+---
+
+### `POST /auth/refresh`
+
+Exchange a refresh token for a new access token and refresh token. The submitted refresh token is immediately invalidated (token rotation).
+
+- **Auth required:** No (refresh token passed in request body)
+- **Content-Type:** `application/json`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `refresh_token` | `string` | Yes | A valid, non-expired refresh token |
+
+**Response** `200`:
+
+```json
+{
+    "access_token": "eyJ...",
+    "token_type": "bearer",
+    "refresh_token": "eyJ..."
+}
+```
+
+**Errors:** `401` — token missing, expired, or already revoked.
+
+---
+
+### `POST /auth/logout`
+
+Invalidate the refresh token associated with the current session.
+
+- **Auth required:** Yes (Bearer token)
+
+**Response** `200`: `{"message": "Successfully logged out"}`
+
+**Errors:** `401` — not authenticated.
+
+---
+
+### `POST /auth/invalidate`
+
+Invalidate all refresh tokens for the authenticated user, signing out every active session.
+
+- **Auth required:** Yes (Bearer token)
+
+**Response** `200`: `{"message": "All sessions invalidated"}`
+
+**Errors:** `401` — not authenticated.
 
 ---
 
