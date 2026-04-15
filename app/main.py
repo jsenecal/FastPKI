@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
@@ -13,7 +15,7 @@ from starlette.responses import Response
 from app.api import api_router
 from app.api.auth import limiter
 from app.api.pki import ca_router, crl_router
-from app.core.config import settings
+from app.core.config import logger, settings
 from app.db.session import create_db_and_tables
 from app.services.encryption import encrypt_existing_keys
 
@@ -35,11 +37,36 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
+async def token_gc_loop() -> None:
+    """Periodically clean up expired blocklisted and refresh tokens."""
+    from app.db.session import async_session_factory
+    from app.services.token import TokenService
+
+    while True:
+        try:
+            async with async_session_factory() as session:
+                token_service = TokenService(session)
+                deleted = await token_service.cleanup_expired_tokens()
+                if deleted > 0:
+                    logger.info("Token GC: cleaned up %d expired entries", deleted)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Token GC: error during cleanup")
+        await asyncio.sleep(3600)  # Run every hour
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await create_db_and_tables()
     await encrypt_existing_keys()
-    yield
+    gc_task = asyncio.create_task(token_gc_loop())
+    try:
+        yield
+    finally:
+        gc_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await gc_task
 
 
 app = FastAPI(

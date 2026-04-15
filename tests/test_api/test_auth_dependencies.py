@@ -15,6 +15,7 @@ from app.api.deps import (
 )
 from app.core.config import settings
 from app.db.models import User, UserRole
+from app.services.token import TokenService
 from app.services.user import UserService
 
 
@@ -233,3 +234,66 @@ async def test_get_current_active_admin_user_not_admin(
 
     assert exc_info.value.status_code == 403
     assert "sufficient privileges" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_blocklisted_token(
+    db: AsyncSession, auth_test_user: User
+):
+    """Test that a blocklisted token is rejected."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    user_service = UserService(db)
+    token = user_service.create_access_token(
+        data={
+            "sub": auth_test_user.username,
+            "id": auth_test_user.id,
+            "role": auth_test_user.role,
+        }
+    )
+
+    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+
+    token_service = TokenService(db)
+    await token_service.blocklist_token(
+        jti=payload["jti"],
+        exp=datetime.fromtimestamp(payload["exp"], tz=ZoneInfo("UTC")),
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await get_current_user(token=token, db=db)
+
+    assert exc_info.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_get_current_user_invalidated_tokens(
+    db: AsyncSession, auth_test_user: User
+):
+    """Test that tokens issued before tokens_invalidated_at are rejected."""
+    import asyncio
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    user_service = UserService(db)
+    token = user_service.create_access_token(
+        data={
+            "sub": auth_test_user.username,
+            "id": auth_test_user.id,
+            "role": auth_test_user.role,
+        }
+    )
+
+    # Wait so invalidation timestamp is strictly after the token's iat (seconds precision)
+    await asyncio.sleep(1.1)
+
+    auth_test_user.tokens_invalidated_at = datetime.now(ZoneInfo("UTC"))
+    db.add(auth_test_user)
+    await db.commit()
+    await db.refresh(auth_test_user)
+
+    with pytest.raises(HTTPException) as exc_info:
+        await get_current_user(token=token, db=db)
+
+    assert exc_info.value.status_code == 401

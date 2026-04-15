@@ -237,8 +237,47 @@ class User(SQLModel, table=True):
     can_export_private_key: bool = Field(default=False)
     can_delete_ca: bool = Field(default=False)
 
+    tokens_invalidated_at: datetime | None = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), nullable=True),
+    )
+
     organization_id: int | None = Field(default=None, foreign_key="organizations.id")
     organization: Organization | None = Relationship(back_populates="users")
+
+
+class BlocklistedToken(SQLModel, table=True):
+    __tablename__ = "blocklisted_tokens"
+
+    id: int | None = Field(default=None, primary_key=True)
+    jti: str = Field(index=True, unique=True)
+    exp: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            nullable=False,
+            default=lambda: datetime.now(UTC),
+        )
+    )
+
+
+class RefreshToken(SQLModel, table=True):
+    __tablename__ = "refresh_tokens"
+
+    id: int | None = Field(default=None, primary_key=True)
+    token_hash: str = Field(index=True, unique=True)
+    user_id: int = Field(foreign_key="users.id", index=True)
+    expires_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
+    revoked: bool = Field(default=False)
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            nullable=False,
+            default=lambda: datetime.now(UTC),
+        )
+    )
 
 
 class AuditLog(SQLModel, table=True):

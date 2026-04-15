@@ -67,6 +67,7 @@ class UserInDB(UserInDBBase):
 
 class Token(BaseModel):
     access_token: str
+    refresh_token: str | None = None
     token_type: str
 
 
@@ -75,3 +76,9 @@ class TokenPayload(BaseModel):
     id: int | None = None
     role: str | None = None
     exp: int | None = None
+    jti: str | None = None
+    iat: int | None = None
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str

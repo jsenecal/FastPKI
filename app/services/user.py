@@ -124,6 +124,19 @@ class UserService:
         if can_delete_ca is not None:
             user.can_delete_ca = can_delete_ca
 
+        should_invalidate_tokens = password is not None or (
+            is_active is not None and not is_active
+        )
+
+        if should_invalidate_tokens:
+            user.tokens_invalidated_at = datetime.now(UTC)
+            from app.services.token import TokenService
+
+            token_service = TokenService(self.db)
+            await token_service.revoke_all_user_refresh_tokens(
+                user_id=user_id, commit=False
+            )
+
         self.db.add(user)
         await self.db.commit()
         await self.db.refresh(user)
@@ -163,16 +176,23 @@ class UserService:
     def create_access_token(
         self, data: dict[str, Any], expires_delta: timedelta | None = None
     ) -> str:
+        import uuid
+
         to_encode = data.copy()
 
+        now = datetime.now(UTC)
         if expires_delta:
-            expire = datetime.now(UTC) + expires_delta
+            expire = now + expires_delta
         else:
-            expire = datetime.now(UTC) + timedelta(
-                minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
-            )
+            expire = now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
-        to_encode.update({"exp": int(expire.timestamp())})
+        to_encode.update(
+            {
+                "exp": int(expire.timestamp()),
+                "iat": int(now.timestamp()),
+                "jti": str(uuid.uuid4()),
+            }
+        )
 
         encoded_jwt: str = jwt.encode(
             to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM

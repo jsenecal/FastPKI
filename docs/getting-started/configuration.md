@@ -8,7 +8,8 @@ FastPKI is configured through environment variables. You can set them in a `.env
 |----------|------|---------|-------------|
 | `DATABASE_URL` | `str` | `sqlite+aiosqlite:///./fastpki.db` | Database connection string. Supports SQLite and PostgreSQL. |
 | `SECRET_KEY` | `str` | `supersecretkey` | Key used to sign JWT tokens. **Must be at least 32 characters.** Change this in production. |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | `int` | `1440` (24 h) | Lifetime of an access token in minutes. |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `int` | `15` | Lifetime of an access token in minutes. |
+| `REFRESH_TOKEN_EXPIRE_MINUTES` | `int` | `1440` (24 h) | Lifetime of a refresh token in minutes. |
 | `ALGORITHM` | `str` | `HS256` | JWT signing algorithm. |
 | `CA_KEY_SIZE` | `int` | `4096` | Default RSA key size for new CAs. |
 | `CA_CERT_DAYS` | `int` | `3650` (10 years) | Default validity period for CA certificates. |
@@ -38,7 +39,8 @@ CERT_DAYS=365
 
 # Security — change this!
 SECRET_KEY=generate-a-secure-random-key-at-least-32-chars-long
-ACCESS_TOKEN_EXPIRE_MINUTES=1440
+ACCESS_TOKEN_EXPIRE_MINUTES=15
+REFRESH_TOKEN_EXPIRE_MINUTES=1440
 
 # Private key encryption (optional)
 # PRIVATE_KEY_ENCRYPTION_KEY=
