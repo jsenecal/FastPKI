@@ -15,6 +15,7 @@ from app.api.deps import (
 )
 from app.core.config import settings
 from app.db.models import User, UserRole
+from app.services.token import TokenService
 from app.services.user import UserService
 
 
@@ -233,9 +234,6 @@ async def test_get_current_active_admin_user_not_admin(
 
     assert exc_info.value.status_code == 403
     assert "sufficient privileges" in exc_info.value.detail
-
-
-from app.services.token import TokenService  # noqa: E402
 
 
 @pytest.mark.asyncio
