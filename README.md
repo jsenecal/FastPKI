@@ -6,6 +6,8 @@
 
 FastPKI is an API-based PKI management system that provides an easier alternative to Easy-RSA. It allows you to create and manage Certificate Authorities, issue certificates, and revoke them through a RESTful API.
 
+Full documentation: [jsenecal.github.io/fastpki](https://jsenecal.github.io/fastpki/)
+
 ## Features
 
 - Create and manage Certificate Authorities (CAs)
@@ -135,9 +137,11 @@ Install pre-commit hooks to automatically check your code before committing:
 pre-commit install
 ```
 
-## API Documentation
+## Documentation
 
-When the application is running, you can access the automatic API documentation at:
+The full user and reference documentation is published at [jsenecal.github.io/fastpki](https://jsenecal.github.io/fastpki/). The source lives in [`docs/`](docs/) and is built with Zensical.
+
+When the application is running, you can also access the automatic API documentation at:
 
 - Swagger UI: http://localhost:8000/api/v1/docs
 - ReDoc: http://localhost:8000/api/v1/redoc
